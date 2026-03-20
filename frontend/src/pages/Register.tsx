@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
 import { Loader2, UserPlus, ArrowRight, Shield, Wrench, Building, Phone, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { getStates, getDistricts, getBlocks } from '@/data/indiaLocationData';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -18,10 +19,13 @@ export default function Register() {
     phone: '',
     password: '',
     role: 'citizen',
-    gov_id: '',
+    gov_id_type: '',
+    gov_id_number: '',
+    gov_id_file: null as File | null,
     area: '',
-    city: '',
+    district: '',
     state: '',
+    pincode: '',
     dept_name: '',
     head_of_dept: '',
     experience_level: '',
@@ -41,6 +45,14 @@ export default function Register() {
     setFormData(prev => ({ ...prev, role: value }));
   };
 
+  const handleStateChange = (value: string) => {
+    setFormData(prev => ({ ...prev, state: value, district: '', area: '' }));
+  };
+
+  const handleDistrictChange = (value: string) => {
+    setFormData(prev => ({ ...prev, district: value, area: '' }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -54,6 +66,10 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  const states = getStates();
+  const districts = formData.state ? getDistricts(formData.state) : [];
+  const blocks = formData.state && formData.district ? getBlocks(formData.state, formData.district) : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,7 +102,7 @@ export default function Register() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
 
-                {/* 1. UNIFIED COMMON FIELDS */}
+                {/* 1. BASIC INFORMATION */}
                 <div className="space-y-4 rounded-xl bg-secondary/20 p-6 border border-border/30 shadow-inner">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-primary mb-5 flex items-center"><UserPlus className="h-4 w-4 mr-2" /> Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -96,7 +112,7 @@ export default function Register() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-foreground flex items-center"><Phone className="h-3 w-3 mr-1" /> Phone Number</Label>
-                      <Input id="phone" value={formData.phone} onChange={handleInput('phone')} required placeholder="+1 234 567 8900" className="bg-background border-border/50 h-11 focus:border-primary transition-colors hover:border-primary/50" />
+                      <Input id="phone" value={formData.phone} onChange={handleInput('phone')} required placeholder="+91 98765 43210" className="bg-background border-border/50 h-11 focus:border-primary transition-colors hover:border-primary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-foreground">Email</Label>
@@ -134,34 +150,77 @@ export default function Register() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4 rounded-xl bg-secondary/20 p-5 border border-border/30 overflow-hidden"
+                      className="space-y-5 rounded-xl bg-secondary/20 p-5 border border-border/30 overflow-hidden"
                     >
                       <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Customer Details</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-foreground">Government ID (Demo Upload)</Label>
-                          <Select onValueChange={val => setFormData(prev => ({ ...prev, gov_id: val }))}>
-                            <SelectTrigger className="bg-secondary/50 border-border/30">
-                              <SelectValue placeholder="Select demo preloaded ID" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 10 }).map((_, i) => (
-                                <SelectItem key={i} value={`demo_id_0${i + 1}.jpg`}>Demo ID 0{i + 1}.jpg</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+
+                      {/* Government ID Section */}
+                      <div className="space-y-4 rounded-lg bg-primary/5 p-4 border border-primary/10">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center"><Shield className="h-3.5 w-3.5 mr-1.5" /> Government ID Verification</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-foreground">ID Type</Label>
+                            <Select onValueChange={val => setFormData(prev => ({ ...prev, gov_id_type: val }))}>
+                              <SelectTrigger className="bg-background border-border/50"><SelectValue placeholder="Select ID Type" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="aadhaar">Aadhaar Card</SelectItem>
+                                <SelectItem value="pan">PAN Card</SelectItem>
+                                <SelectItem value="driving_licence">Driving Licence</SelectItem>
+                                <SelectItem value="voter_id">Voter ID</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-foreground">ID Number</Label>
+                            <Input value={formData.gov_id_number} onChange={handleInput('gov_id_number')} required placeholder="Enter your ID number" className="bg-background border-border/50" />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label className="text-foreground">Upload ID Document</Label>
+                            <Input
+                              type="file"
+                              accept="image/*,.pdf"
+                              onChange={e => setFormData(prev => ({ ...prev, gov_id_file: e.target.files?.[0] || null }))}
+                              className="bg-background border-border/50 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-foreground">Area</Label>
-                          <Input value={formData.area} onChange={handleInput('area')} required placeholder="e.g. Downtown" className="bg-secondary/50" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-foreground">City</Label>
-                          <Input value={formData.city} onChange={handleInput('city')} required placeholder="Metropolis" className="bg-secondary/50" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-foreground">State</Label>
-                          <Input value={formData.state} onChange={handleInput('state')} required placeholder="NY" className="bg-secondary/50" />
+                      </div>
+
+                      {/* Location Section */}
+                      <div className="space-y-4 rounded-lg bg-primary/5 p-4 border border-primary/10">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center"><MapPin className="h-3.5 w-3.5 mr-1.5" /> Address Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-foreground">State</Label>
+                            <Select value={formData.state} onValueChange={handleStateChange}>
+                              <SelectTrigger className="bg-background border-border/50"><SelectValue placeholder="Select State" /></SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-foreground">District</Label>
+                            <Select value={formData.district} onValueChange={handleDistrictChange} disabled={!formData.state}>
+                              <SelectTrigger className="bg-background border-border/50"><SelectValue placeholder={formData.state ? "Select District" : "Select State first"} /></SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-foreground">Block / Area</Label>
+                            <Select value={formData.area} onValueChange={val => setFormData(prev => ({ ...prev, area: val }))} disabled={!formData.district}>
+                              <SelectTrigger className="bg-background border-border/50"><SelectValue placeholder={formData.district ? "Select Block" : "Select District first"} /></SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                {blocks.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-foreground">Pin Code</Label>
+                            <Input value={formData.pincode} onChange={handleInput('pincode')} required placeholder="6-digit pin code" maxLength={6} pattern="[0-9]{6}" className="bg-background border-border/50" />
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -187,15 +246,16 @@ export default function Register() {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-foreground flex items-center"><Shield className="h-3 w-3 mr-1" /> Government ID Number</Label>
-                          <Input value={formData.gov_id} onChange={handleInput('gov_id')} required placeholder="Admin-ID-1234" className="bg-secondary/50 focus:border-blue-500 transition-colors" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-foreground flex items-center"><MapPin className="h-3 w-3 mr-1" /> City</Label>
-                          <Input value={formData.city} onChange={handleInput('city')} required placeholder="City Name" className="bg-secondary/50 focus:border-blue-500 transition-colors" />
+                          <Input value={formData.gov_id_number} onChange={handleInput('gov_id_number')} required placeholder="Admin-ID-1234" className="bg-secondary/50 focus:border-blue-500 transition-colors" />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-foreground flex items-center"><MapPin className="h-3 w-3 mr-1" /> State</Label>
-                          <Input value={formData.state} onChange={handleInput('state')} required placeholder="State Name" className="bg-secondary/50 focus:border-blue-500 transition-colors" />
+                          <Select value={formData.state} onValueChange={handleStateChange}>
+                            <SelectTrigger className="bg-secondary/50 border-border/30 focus:border-blue-500"><SelectValue placeholder="Select State" /></SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-foreground flex items-center"><GraduationCap className="h-3 w-3 mr-1" /> Experience Level</Label>
@@ -256,7 +316,12 @@ export default function Register() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <Label className="text-foreground">State Assigned</Label>
-                          <Input value={formData.state} onChange={handleInput('state')} required placeholder="State Name" className="bg-secondary/50" />
+                          <Select value={formData.state} onValueChange={handleStateChange}>
+                            <SelectTrigger className="bg-secondary/50 border-border/30"><SelectValue placeholder="Select State" /></SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </motion.div>
