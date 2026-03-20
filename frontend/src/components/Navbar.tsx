@@ -1,10 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shield, LogOut, LayoutDashboard, Menu, X } from 'lucide-react';
+import { Shield, LogOut, LayoutDashboard, Menu, X, Landmark } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import logo from '@/assets/logo.png';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Navbar() {
@@ -23,7 +22,7 @@ export default function Navbar() {
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary transition-shadow group-hover:shadow-glow">
-            <img src={logo} alt="UrbanShield AI" className="h-5 w-5" />
+            <Landmark className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold text-foreground tracking-tight">
             Urban<span className="text-gradient-primary">Shield</span>
