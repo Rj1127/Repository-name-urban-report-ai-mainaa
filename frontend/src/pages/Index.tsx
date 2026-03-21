@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles } from 'lucide-react';
+import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import heroImage from '@/assets/hero-city.jpg';
 
@@ -36,6 +36,53 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      {/* Official State Emblem Banner */}
+      <div className="w-full bg-gradient-to-r from-red-900 via-red-800 to-red-900 border-y-2 border-red-500/50 py-3 overflow-hidden relative shadow-lg z-40">
+        <div className="container relative flex items-center justify-between">
+          <div className="flex items-center gap-5 z-10 w-full">
+            {/* Ashoka Lion Emblem */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="shrink-0 bg-white flex items-center justify-center h-14 w-14 rounded-full shadow-[0_0_15px_rgba(255,255,255,0.3)] border-2 border-amber-500 p-1.5 z-20"
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/5/55/Emblem_of_India.svg"
+                alt="Satyameva Jayate"
+                className="h-full w-full object-contain"
+              />
+            </motion.div>
+
+            {/* Animated Marquee Text */}
+            <div className="flex-1 overflow-hidden relative flex items-center h-full [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]">
+              <motion.div
+                animate={{ x: ["0%", "-50%"] }}
+                transition={{ repeat: Infinity, ease: "linear", duration: 30 }}
+                className="flex whitespace-nowrap items-center text-white font-bold tracking-widest text-[13px] sm:text-[15px] uppercase"
+              >
+                {[...Array(6)].map((_, i) => (
+                  <span key={i} className="flex items-center gap-8 mx-6">
+                    <span className="flex items-center gap-2.5 text-amber-300 drop-shadow-md">
+                      <Shield className="h-5 w-5" /> SMART MUNICIPAL GOVERNANCE
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/70"></span>
+                    <span className="flex items-center gap-2.5 text-blue-200 drop-shadow-md">
+                      <Building2 className="h-5 w-5" /> AI CIVIC REPORTING
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/70"></span>
+                    <span className="flex items-center gap-2.5 text-emerald-200 drop-shadow-md">
+                      <Trash2 className="h-5 w-5" /> RAPID CITY RESOLUTION
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/70"></span>
+                  </span>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -100,26 +147,26 @@ export default function Index() {
                 Quick Test Navigation
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => navigate('/dashboard')} 
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
                   className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
                 >
                   Citizen Dashboard
                 </Button>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => navigate('/admin')} 
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/admin')}
                   className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
                 >
                   Admin Dashboard
                 </Button>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={() => navigate('/resolver')} 
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/resolver')}
                   className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
                 >
                   Resolver Dashboard

@@ -149,50 +149,54 @@
     backdrop-filter: blur(30px);
     border: 1px solid hsl(var(--border) / 0.6);
   }
+}
 
-  .text-gradient-primary {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+.text-gradient-primary {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
-  .text-gradient-accent {
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+.text-gradient-accent {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
 
-  .animate-glow-pulse {
-    animation: glow-pulse 3s ease-in-out infinite;
-  }
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
 }
 
 @keyframes float {
-
-  0%,
-  100% {
+  0% {
     transform: translateY(0px);
   }
 
   50% {
     transform: translateY(-10px);
   }
+
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 @keyframes glow-pulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px -5px hsl(160 84% 39% / 0.2);
+  0% {
+    box-shadow: var(--shadow-glow);
   }
 
   50% {
-    box-shadow: 0 0 40px -5px hsl(160 84% 39% / 0.5);
+    box-shadow: 0 0 50px -5px hsl(var(--primary) / 0.5);
+  }
+
+  100% {
+    box-shadow: var(--shadow-glow);
   }
 }
