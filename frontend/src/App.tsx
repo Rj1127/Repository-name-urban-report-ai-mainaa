@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import CitizenDashboard from "./pages/CitizenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ResolverDashboard from "./pages/ResolverDashboard";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/dashboard" element={<CitizenDashboard />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resolver" element={<ResolverDashboard />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

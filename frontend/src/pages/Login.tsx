@@ -19,19 +19,57 @@ const getDashboardForRole = (role: string | null) => {
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState<'login' | 'otp'>('login');
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
   const [loading, setLoading] = useState(false);
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (step === 'otp' && timeLeft > 0) {
+      const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timerId);
+    }
+  }, [step, timeLeft]);
+
+  useEffect(() => {
     if (user && user.role) navigate(getDashboardForRole(user.role));
   }, [user, navigate]);
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    try {
+      const res = await login(email, password, undefined);
+      if (res && res.requireOtp) {
+        toast.success('A fresh OTP has been sent to your email');
+        setTimeLeft(300);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to resend OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const res = await login(email, password, step === 'otp' ? otp : undefined);
+
+      if (res && res.requireOtp) {
+        toast.success(res.message || 'OTP sent to email');
+        setStep('otp');
+        return;
+      }
+
       toast.success('Logged in successfully');
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       navigate(getDashboardForRole(storedUser.role || 'citizen'));
@@ -67,18 +105,40 @@ export default function Login() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
-                  <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="h-11 bg-secondary/50 border-border/30 focus:border-primary/50 transition-colors" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
-                  <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" className="h-11 bg-secondary/50 border-border/30 focus:border-primary/50 transition-colors" />
-                </div>
+                {step === 'login' ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
+                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="h-11 bg-secondary/50 border-border/30 focus:border-primary/50 transition-colors" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
+                      <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" className="h-11 bg-secondary/50 border-border/30 focus:border-primary/50 transition-colors" />
+                    </div>
+                  </>
+                ) : (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                    <div className="text-center mb-4">
+                      <Label className="text-muted-foreground text-sm">Enter the 6-digit code sent to <b className="text-foreground">{email}</b></Label>
+                    </div>
+                    <Input autoFocus id="otp" type="text" maxLength={6} value={otp} onChange={e => setOtp(e.target.value)} required placeholder="123456" className="h-14 text-center text-2xl tracking-[0.5em] font-bold bg-secondary/50 border-border/30 focus:border-primary/50 transition-colors" />
+                    <div className="flex items-center justify-between text-sm mt-3 px-1">
+                      <span className="text-muted-foreground font-medium">OTP expires in: <span className={timeLeft > 60 ? "text-primary" : "text-destructive"}>{formatTime(timeLeft)}</span></span>
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={timeLeft > 0 || loading}
+                        className={`font-bold transition-colors ${timeLeft > 0 ? 'text-muted-foreground/50 cursor-not-allowed' : 'text-primary hover:text-blue-500 underline underline-offset-2'}`}
+                      >
+                        Resend Code
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
                 <Button type="submit" className="w-full h-12 gradient-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-all duration-300 hover:shadow-glow group" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                  Sign In
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />}
+                  {step === 'login' ? 'Sign In' : 'Verify Code'}
+                  {!loading && step === 'login' && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />}
                 </Button>
               </form>
               <p className="mt-6 text-center text-sm text-muted-foreground">

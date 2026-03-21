@@ -1,4 +1,4 @@
-import { Languages } from "lucide-react";
+import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
@@ -30,9 +30,9 @@ export function LanguageToggle() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-secondary">
-                    <Languages className="h-[1.2rem] w-[1.2rem]" />
-                    <span className="sr-only">Choose Language</span>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center gap-2">
+                    <Globe className="h-[1.1rem] w-[1.1rem]" />
+                    <span className="font-semibold">{lang === 'hi' ? 'हिंदी' : 'English'}</span>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

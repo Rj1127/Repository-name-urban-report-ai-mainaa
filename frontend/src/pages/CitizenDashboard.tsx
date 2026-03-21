@@ -174,18 +174,18 @@ export default function CitizenDashboard() {
 
           {/* Attactive Hero Banner inside Dashboard */}
           <div className="relative mb-8 overflow-hidden rounded-2xl border border-primary/20 bg-background shadow-elevated h-[200px] lg:h-[240px] flex items-center group">
-            <img src={heroImage} alt="City Skyline" className="absolute inset-0 h-full w-full object-cover opacity-20 group-hover:scale-105 group-hover:opacity-30 transition-all duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-transparent pointer-events-none" />
+            <img src={heroImage} alt="City Skyline" className="absolute inset-0 h-full w-full object-cover opacity-90 group-hover:scale-105 group-hover:opacity-100 transition-all duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/60 to-transparent/10 pointer-events-none" />
             <div className="relative z-10 px-6 lg:px-10 w-full max-w-2xl">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center gap-1.5 px-4 py-1.5 mb-5 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-black uppercase tracking-widest backdrop-blur-md shadow-sm">
+                  <Sparkles className="h-4 w-4" />
                   Real-World AI Enabled
                 </div>
-                <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground mb-3">
-                  Citizen <span className="text-gradient-primary">Command Center</span>
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-foreground/95 mb-4 drop-shadow-sm">
+                  Citizen <span className="text-gradient-primary font-black drop-shadow-sm">Command Center</span>
                 </h1>
-                <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">
+                <p className="text-base lg:text-lg text-foreground/80 font-bold leading-relaxed max-w-xl drop-shadow-sm">
                   Upload photos of civic issues. Our Vision AI accurately detects, classifies, and filters irrelevant images instantly for rapid city resolution.
                 </p>
               </motion.div>

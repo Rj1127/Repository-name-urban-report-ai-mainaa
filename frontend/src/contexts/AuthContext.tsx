@@ -11,8 +11,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: any) => Promise<void>;
+  login: (email: string, password: string, otp?: string) => Promise<any>;
+  register: (userData: any) => Promise<any>;
   logout: () => void;
 }
 
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   // 🔐 LOGIN
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, otp?: string) => {
     setLoading(true);
 
     const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, otp }),
     });
 
     const data = await res.json();
@@ -50,10 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(data.message || "Login failed");
     }
 
+    if (data.requireOtp) {
+      setLoading(false);
+      return data;
+    }
+
     setUser(data);
     localStorage.setItem("user", JSON.stringify(data));
 
     setLoading(false);
+    return data;
   };
 
   // 📝 REGISTER
@@ -75,7 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(data.message || "Registration failed");
     }
 
+    if (data.requireOtp) {
+      setLoading(false);
+      return data;
+    }
+
     setLoading(false);
+    return data;
   };
 
   // 🚪 LOGOUT

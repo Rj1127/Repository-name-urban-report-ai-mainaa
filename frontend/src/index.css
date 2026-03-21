@@ -103,9 +103,11 @@
     line-height: 1.7;
     letter-spacing: 0.01em;
     top: 0 !important;
+    position: static !important;
   }
 
-  .goog-te-banner-frame {
+  /* Definitively Hide All Google Translate UI Popups */
+  .goog-te-banner-frame.skiptranslate {
     display: none !important;
   }
 
@@ -114,6 +116,22 @@
   }
 
   .goog-tooltip:hover {
+    display: none !important;
+  }
+
+  #goog-gt-tt {
+    display: none !important;
+  }
+
+  .VIpgJd-Zvi9od-aZ2wEe-wOHMyf {
+    display: none !important;
+  }
+
+  .VIpgJd-Zvi9od-or5S-wOHMyf {
+    display: none !important;
+  }
+
+  iframe.goog-te-banner-frame {
     display: none !important;
   }
 
