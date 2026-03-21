@@ -117,62 +117,11 @@ export default function Index() {
               <span className="text-gradient-primary">AI Detects.</span>
               <br />City Resolves.
             </h1>
-            <p className="mb-10 max-w-xl text-lg text-muted-foreground leading-relaxed">
+            <p className="mb-10 max-w-xl text-lg text-foreground font-medium leading-relaxed">
               Smart Nagar Reporting portal(SNRP) uses computer vision to instantly detect civic infrastructure problems.
               Upload a photo → AI classifies it → Track resolution in real-time.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Button
-                size="lg"
-                onClick={() => navigate('/register')}
-                className="h-13 px-8 gradient-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-all duration-300 hover:shadow-glow group"
-              >
-                Start Reporting
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => navigate('/login')}
-                className="h-13 px-8 border-border/50 text-foreground font-semibold text-base hover:bg-secondary hover:border-primary/30 transition-all duration-300"
-              >
-                Sign In
-              </Button>
-            </div>
 
-            {/* Testing Links - Easy Dashboard Access */}
-            <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-4 backdrop-blur-sm">
-              <p className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Quick Test Navigation
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate('/dashboard')}
-                  className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
-                >
-                  Citizen Dashboard
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate('/admin')}
-                  className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
-                >
-                  Admin Dashboard
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => navigate('/resolver')}
-                  className="bg-background/50 hover:bg-background border border-border/50 shadow-sm transition-all"
-                >
-                  Resolver Dashboard
-                </Button>
-              </div>
-            </div>
           </motion.div>
 
           <motion.div
