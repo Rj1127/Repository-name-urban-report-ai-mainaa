@@ -118,7 +118,7 @@ export default function Index() {
               <br />City Resolves.
             </h1>
             <p className="mb-10 max-w-xl text-lg text-muted-foreground leading-relaxed">
-              UrbanShield uses computer vision to instantly detect civic infrastructure problems.
+              Smart Nagar Reporting portal(SNRP) uses computer vision to instantly detect civic infrastructure problems.
               Upload a photo → AI classifies it → Track resolution in real-time.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -248,13 +248,13 @@ export default function Index() {
             className="mb-16 text-center"
           >
             <h2 className="mb-4 text-3xl font-extrabold text-foreground lg:text-4xl">
-              How <span className="text-gradient-primary">UrbanShield</span> Works
+              How <span className="text-gradient-primary">Smart Nagar Reporting portal(SNRP)</span> Works
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
               End-to-end civic issue management powered by AI vision, GPS tracking, and real-time analytics
             </p>
           </motion.div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -263,13 +263,15 @@ export default function Index() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, duration: 0.5 }}
               >
-                <Card className="group h-full border-border/30 bg-card/50 shadow-card transition-all duration-500 hover:shadow-glow hover:border-primary/30 hover:-translate-y-1">
-                  <CardContent className="p-7">
-                    <div className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${f.gradient} transition-transform duration-300 group-hover:scale-110`}>
-                      <f.icon className="h-7 w-7 text-primary" />
+                <Card className="group h-full border-2 border-primary/10 bg-primary/5 backdrop-blur-sm shadow-card transition-all duration-500 hover:shadow-glow hover:bg-primary/10 hover:border-primary/30 hover:-translate-y-1">
+                  <CardContent className="p-7 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                    <div className={`shrink-0 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${f.gradient} transition-transform duration-500 group-hover:shadow-[0_0_20px_hsl(var(--primary)/0.3)] shadow-sm bg-white/50`}>
+                      <f.icon className="h-8 w-8 text-primary" />
                     </div>
-                    <h3 className="mb-2 text-lg font-bold text-foreground">{f.title}</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+                    <div className="flex-1">
+                      <h3 className="mb-2 text-xl font-bold text-foreground">{f.title}</h3>
+                      <p className="text-[15px] leading-relaxed text-muted-foreground">{f.desc}</p>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -283,9 +285,9 @@ export default function Index() {
         <div className="container">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Shield className="h-5 w-5 text-primary" />
-            <span className="font-bold text-foreground">UrbanShield AI</span>
+            <span className="font-bold text-foreground">Smart Nagar Reporting portal(SNRP)</span>
           </div>
-          <p className="text-sm text-muted-foreground">© 2026 UrbanShield AI — Smart Civic Issue Detection Platform</p>
+          <p className="text-sm text-muted-foreground">© 2026 Smart Nagar Reporting portal(SNRP) — Smart Civic Issue Detection Platform</p>
         </div>
       </footer>
     </div>

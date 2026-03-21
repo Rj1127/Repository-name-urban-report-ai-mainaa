@@ -63,7 +63,7 @@ export default function Login() {
                 <Shield className="h-7 w-7 text-primary-foreground" />
               </div>
               <CardTitle className="text-2xl font-extrabold text-foreground">Welcome Back</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Sign in to your UrbanShield account</p>
+              <p className="text-sm text-muted-foreground mt-1">Sign in to your Smart Nagar Reporting portal(SNRP) account</p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">

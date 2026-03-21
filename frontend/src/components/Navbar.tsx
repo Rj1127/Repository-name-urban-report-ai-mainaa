@@ -5,6 +5,7 @@ import { Shield, LogOut, LayoutDashboard, Menu, X, Landmark } from 'lucide-react
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -25,12 +26,13 @@ export default function Navbar() {
             <Landmark className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold text-foreground tracking-tight">
-            Urban<span className="text-gradient-primary">Shield</span>
+            Smart Nagar Reporting portal(<span className="text-gradient-primary">SNRP</span>)
           </span>
         </Link>
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-2">
+          <LanguageToggle />
           <ThemeToggle />
           {user ? (
             <>
@@ -76,6 +78,7 @@ export default function Navbar() {
 
         {/* Mobile toggle */}
         <div className="flex flex-row items-center gap-2 md:hidden">
+          <LanguageToggle />
           <ThemeToggle />
           <button
             className="p-2 text-muted-foreground hover:text-foreground"

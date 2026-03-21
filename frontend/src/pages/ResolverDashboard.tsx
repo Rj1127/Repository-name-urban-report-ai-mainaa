@@ -178,7 +178,7 @@ export default function ResolverDashboard() {
                 <Upload className="h-5 w-5 text-primary" /> Upload Proof of Work
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                UrbanShield AI automatically compares your After image with the Before image. Ensure the repair is clearly visible to prevent AI rejection.
+                Smart Nagar Reporting portal(SNRP) automatically compares your After image with the Before image. Ensure the repair is clearly visible to prevent AI rejection.
               </p>
             </DialogHeader>
 

@@ -86,7 +86,7 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
               <Camera className="h-10 w-10 text-primary" />
             </motion.div>
             <span className="text-base font-bold text-foreground">Upload Issue Evidence</span>
-            <span className="mt-1.5 text-xs text-muted-foreground font-medium">UrbanShield AI will detect the problem automatically</span>
+            <span className="mt-1.5 text-xs text-muted-foreground font-medium">Smart Nagar Reporting portal(SNRP) will detect the problem automatically</span>
             <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
           </label>
         )}

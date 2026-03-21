@@ -97,7 +97,7 @@ export default function Register() {
                 <div className="h-10 w-10 rounded-full border-2 border-background bg-orange-500 flex items-center justify-center shadow-md z-10"><Wrench className="h-5 w-5 text-white" /></div>
               </div>
               <CardTitle className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 pb-1">Create Your Account</CardTitle>
-              <p className="text-sm text-muted-foreground mt-2 font-medium">Join UrbanShield's unified civic protection network</p>
+              <p className="text-sm text-muted-foreground mt-2 font-medium">Join Smart Nagar Reporting portal(SNRP)'s unified civic protection network</p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
