@@ -59,7 +59,7 @@ export default function CitizenDashboard() {
 
   const fetchComplaints = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?user_id=${user?.id}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?user_id=${user?._id || user?.id}`);
       const data = await res.json();
       setComplaints(Array.isArray(data) ? data : []);
     } catch (err) {

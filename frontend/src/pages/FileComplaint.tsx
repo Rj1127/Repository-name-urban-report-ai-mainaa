@@ -58,7 +58,7 @@ export default function FileComplaint() {
             if (!res.ok) throw new Error(data.message);
 
             toast.success(`Complaint Submitted successfully! Ref: ${data.ref}`);
-            navigate('/dashboard');
+            navigate(user?.role === 'admin' ? '/admin' : '/dashboard');
         } catch (err: any) {
             toast.error(err.message || "Failed to file the complaint");
         } finally {
