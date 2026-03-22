@@ -2,10 +2,13 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import { toast } from "sonner";
 
 interface User {
-  id?: number;
+  id?: string;
+  _id?: string;
   name: string;
   email: string;
   role: string;
+  phone?: string | null;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
@@ -14,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string, otp?: string) => Promise<any>;
   register: (userData: any) => Promise<any>;
   logout: () => void;
+  updateUser: (updatedUser: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,8 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success("Successfully logged out");
   };
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

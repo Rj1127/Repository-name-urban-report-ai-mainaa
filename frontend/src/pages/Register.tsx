@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
+    phone: '+91',
     password: '',
     role: 'citizen',
     gov_id_type: '',
@@ -154,7 +154,25 @@ export default function Register() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="phone" className="text-foreground flex items-center"><Phone className="h-3 w-3 mr-1" /> Phone Number</Label>
-                          <Input id="phone" value={formData.phone} onChange={handleInput('phone')} required placeholder="+91 98765 43210" className="bg-background border-border/50 h-11 focus:border-primary transition-colors hover:border-primary/50" />
+                          <div className="flex h-11 rounded-md border border-border/50 bg-background overflow-hidden focus-within:border-primary hover:border-primary/50 transition-colors">
+                            <span className="flex items-center px-3 bg-muted/60 border-r border-border/50 text-sm font-semibold text-foreground select-none shrink-0">+91</span>
+                            <input
+                              id="phone"
+                              type="tel"
+                              inputMode="numeric"
+                              maxLength={10}
+                              minLength={10}
+                              pattern="[0-9]{10}"
+                              required
+                              placeholder="10 digit number"
+                              value={formData.phone.replace(/^\+91/, '')}
+                              onChange={e => {
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                setFormData(prev => ({ ...prev, phone: '+91' + digits }));
+                              }}
+                              className="flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground/50"
+                            />
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="email" className="text-foreground">Email</Label>

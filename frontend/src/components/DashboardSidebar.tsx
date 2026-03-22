@@ -9,10 +9,10 @@ export default function DashboardSidebar() {
   const { logout } = useAuth();
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/dashboard') },
-    { icon: FileText, label: 'Sent Application', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', action: () => toast.info('Sent Application feature coming soon.') },
-    { icon: Edit, label: 'Modify Application', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', action: () => toast.info('Modify Application feature coming soon.') },
-    { icon: Building2, label: 'Nearest Municipality', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => toast.info('Municipality locator feature coming soon.') },
+    { icon: LayoutDashboard, label: 'Dashboard', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/30', action: () => navigate('/dashboard?tab=dashboard') },
+    { icon: FileText, label: 'Report Civic Issues', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/dashboard?tab=report') },
+    { icon: FileText, label: 'Track application', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', action: () => navigate('/applications/sent') },
+    { icon: Building2, label: 'Nearest Municipality', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => navigate('/municipality/nearest') },
   ];
 
   return (

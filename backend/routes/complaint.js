@@ -98,6 +98,21 @@ router.get("/", async (req, res) => {
     }
 });
 
+// UPDATE COMPLAINT DESCRIPTION
+router.put("/:id", async (req, res) => {
+    try {
+        const complaint = await Complaint.findById(req.params.id);
+        if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+        if (complaint.status !== 'New') return res.status(400).json({ error: "Cannot modify a complaint that is already being processed." });
+
+        complaint.description = req.body.description;
+        await complaint.save();
+        res.json({ message: "Complaint updated successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ASSIGN COMPLAINT TO ENGINEER
 router.post("/assign", async (req, res) => {
     try {

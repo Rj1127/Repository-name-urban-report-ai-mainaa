@@ -1,3 +1,8 @@
 
 .mongo_local/
 mongodata/
+local-mongo/
+start-mongo.bat
+setup-mongo.ps1
+mongo_error.txt
+mongod.log

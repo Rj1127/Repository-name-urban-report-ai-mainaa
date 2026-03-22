@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ["citizen", "admin", "resolver"], default: "citizen" },
     phone: { type: String, default: null },
     gov_id: { type: String, default: null },
+    avatar: { type: String, default: null },
     area: { type: String, default: null },
     city: { type: String, default: null },
     state: { type: String, default: null },

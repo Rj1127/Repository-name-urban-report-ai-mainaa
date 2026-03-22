@@ -11,6 +11,10 @@ import CitizenDashboard from "./pages/CitizenDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ResolverDashboard from "./pages/ResolverDashboard";
 import Profile from "./pages/Profile";
+import FileComplaint from "./pages/FileComplaint";
+import SentApplications from "./pages/SentApplications";
+import ModifyApplication from "./pages/ModifyApplication";
+import NearestMunicipality from "./pages/NearestMunicipality";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
@@ -32,6 +36,10 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/resolver" element={<ResolverDashboard />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/file-complaint" element={<FileComplaint />} />
+              <Route path="/applications/sent" element={<SentApplications />} />
+              <Route path="/applications/modify" element={<ModifyApplication />} />
+              <Route path="/municipality/nearest" element={<NearestMunicipality />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

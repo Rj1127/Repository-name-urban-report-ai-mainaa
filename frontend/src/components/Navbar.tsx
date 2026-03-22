@@ -77,7 +77,7 @@ export default function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate(getDashboardPath())} className="cursor-pointer">
                     <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span>Dashboard</span>
+                    <span>Report Civic Issues</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { logout(); navigate('/'); }} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />

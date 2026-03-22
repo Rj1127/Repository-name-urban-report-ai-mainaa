@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, MapPin, Search, AlertCircle, CheckCircle, Clock, Map, Sparkles, Navigation } from 'lucide-react';
+import { Upload, MapPin, Search, AlertCircle, CheckCircle, Clock, Map, Sparkles, Navigation, FileText, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,9 @@ function LocationMarker({ position, setPosition, onLocationChange }: { position:
 
 export default function CitizenDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'dashboard';
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +61,7 @@ export default function CitizenDashboard() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?user_id=${user?.id}`);
       const data = await res.json();
-      setComplaints(data);
+      setComplaints(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -192,214 +196,189 @@ export default function CitizenDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-            {/* LEFT: SUBMIT FORM */}
-            <div className={`transition-all duration-500 ${analysis ? 'lg:col-span-4' : 'lg:col-span-5'}`}>
-              <Card className="glass-panel border-border/50 shadow-elevated">
-                <CardHeader className="border-b border-border/50 bg-secondary/20 pb-4">
-                  <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <Upload className="h-5 w-5 text-primary" /> Report Interface
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
 
-                  <ImageAnalyzer onAnalysisComplete={setAnalysis} />
+          <div className="grid grid-cols-1 gap-8 items-start">
 
-                  {analysis && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-5 pt-4 border-t border-border/50">
-                      <div className="space-y-1 bg-primary/5 p-3 rounded-lg border border-primary/10">
-                        <p className="text-sm font-semibold text-primary flex items-center"><MapPin className="h-4 w-4 mr-1.5" /> Set Location</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">Please pinpoint the exact location on the large map to the right or use Auto-GPS.</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Additional Context (Optional)</label>
-                        <Input
-                          placeholder={analysis.description || "Add any specific details..."}
-                          value={description} onChange={e => setDescription(e.target.value)}
-                          className="bg-secondary/50"
-                        />
-                      </div>
-
-                      <Button onClick={handleSubmit} disabled={submitting} className="w-full h-12 gradient-primary text-primary-foreground font-bold text-lg hover:opacity-90 transition-all shadow-glow mt-2">
-                        {submitting ? 'Submitting...' : 'Dispatch to Authorities'}
-                      </Button>
-                    </motion.div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* RIGHT: DYNAMIC (MAP or HISTORY) */}
-            <div className={`transition-all duration-500 ${analysis ? 'lg:col-span-8' : 'lg:col-span-7'} space-y-4`}>
-              {analysis ? (
-                <motion.div key="analysis" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-                  {/* NEW AI REPORT CARD */}
-                  <Card className="glass-panel border-border/50 shadow-elevated overflow-hidden">
-                    <CardHeader className="bg-primary/10 border-b border-border/50 p-4">
-                      <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
-                        <Sparkles className="h-5 w-5" /> AI Analysis Report
-                      </CardTitle>
+            {/* CASE 1: DASHBOARD OVERVIEW */}
+            {activeTab === 'dashboard' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                {/* Stats Cards - inside Dashboard section */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <Card className="glass-panel border-border/50 shadow-elevated">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 text-muted-foreground">
+                      <CardTitle className="text-sm font-bold tracking-wider uppercase">Sent Applications</CardTitle>
+                      <FileText className="h-4 w-4 text-purple-500" />
                     </CardHeader>
-                    <CardContent className="p-5 flex items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-success/20">
-                        <CheckCircle className="h-7 w-7 text-success" />
-                      </div>
-                      <div>
-                        <div className="flex items-center">
-                          <span className="font-extrabold capitalize text-foreground text-xl">
-                            {analysis.issueType.replace('_', ' ')}
-                          </span>
-                          <span className="ml-3 rounded-md bg-primary/10 border border-primary/30 px-2 py-0.5 text-xs font-bold text-primary">
-                            {(analysis.confidence * 100).toFixed(1)}% Confidence
-                          </span>
-                        </div>
-                        {analysis.description && (
-                          <p className="mt-2 text-sm text-muted-foreground leading-relaxed font-medium">{analysis.description}</p>
-                        )}
-                      </div>
+                    <CardContent>
+                      <div className="text-3xl font-black text-foreground">{complaints.length}</div>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">Total submitted</p>
                     </CardContent>
                   </Card>
-
-                  <Card className="glass-panel border-border/50 shadow-elevated overflow-hidden flex flex-col h-[500px]">
-                    <CardHeader className="bg-secondary/20 border-b border-border/50 shrink-0 p-4 lg:p-6">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <CardTitle className="text-xl font-bold flex items-center gap-2">
-                            <MapPin className="h-5 w-5 text-primary" /> Pinpoint Exact Location
-                          </CardTitle>
-                          <CardDescription className="mt-1 text-sm">Drag the map or click to set the exact coordinates for the issue.</CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={captureLocation} className="h-9 hover:bg-primary/10 hover:text-primary transition-colors border-border/50 group">
-                          <Navigation className="h-4 w-4 mr-2 group-hover:animate-bounce" /> Auto-GPS
-                        </Button>
-                      </div>
+                  <Card className="glass-panel border-border/50 shadow-elevated">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 text-muted-foreground">
+                      <CardTitle className="text-sm font-bold tracking-wider uppercase">Active Complaints</CardTitle>
+                      <AlertCircle className="h-4 w-4 text-orange-500" />
                     </CardHeader>
-                    <div className="flex-1 relative w-full h-full z-0 p-0">
-                      <MapContainer center={[20.5937, 78.9629]} zoom={4} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <LocationMarker position={location} setPosition={setLocation} onLocationChange={reverseGeocode} />
-                      </MapContainer>
-
-                      {/* Address overlay inside map */}
-                      <div className="absolute bottom-6 left-6 right-6 z-[400] bg-background/95 backdrop-blur-md p-4 rounded-xl border border-border/50 shadow-elevated">
-                        <div className="flex flex-col md:flex-row gap-4">
-                          <Input
-                            placeholder="Or manually type the street address..."
-                            value={address} onChange={e => setAddress(e.target.value)}
-                            className="flex-1 bg-secondary/50 h-11"
-                          />
-                          {location && (
-                            <div className="shrink-0 flex items-center px-4 h-11 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-sm">
-                              <MapPin className="h-4 w-4 mr-2" /> Lat: {location.lat.toFixed(4)}, Lng: {location.lng.toFixed(4)}
-                            </div>
-                          )}
-                        </div>
+                    <CardContent>
+                      <div className="text-3xl font-black text-foreground">
+                        {complaints.filter((c: any) => ['New', 'In Progress', 'Assigned', 'Forwarded'].includes(c.status)).length}
                       </div>
-                    </div>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">Currently being processed</p>
+                    </CardContent>
                   </Card>
-                </motion.div>
-              ) : (
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
-                    <Sparkles className="h-5 w-5 text-primary" /> Tracking History
-                  </h2>
+                  <Card className="glass-panel border-border/50 shadow-elevated">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 text-muted-foreground">
+                      <CardTitle className="text-sm font-bold tracking-wider uppercase">Complaints Reviewed</CardTitle>
+                      <Search className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-black text-foreground">
+                        {complaints.filter((c: any) => ['Forwarded', 'Assigned', 'In Progress', 'Resolved', 'Closed'].includes(c.status)).length}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">Acknowledged by officials</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-panel border-border/50 shadow-elevated">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 text-muted-foreground">
+                      <CardTitle className="text-sm font-bold tracking-wider uppercase">Issues Resolved</CardTitle>
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-black text-foreground">
+                        {complaints.filter((c: any) => c.status === 'Resolved' || c.status === 'Closed').length}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-medium mt-1">Successfully completed</p>
+                    </CardContent>
+                  </Card>
+                </div>
 
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-black flex items-center gap-2 mb-2">
+                    <Clock className="h-6 w-6 text-primary" /> Application History
+                  </h2>
                   {loading ? (
                     <div className="flex items-center justify-center p-12 text-muted-foreground">Loading history...</div>
-                  ) : !Array.isArray(complaints) || complaints.length === 0 ? (
-                    <Card className="glass-panel border-dashed p-12 text-center">
-                      <p className="text-muted-foreground font-medium">No complaints submitted yet.</p>
+                  ) : complaints.length === 0 ? (
+                    <Card className="glass-panel border-dashed p-12 text-center text-muted-foreground font-semibold">
+                      You haven't submitted any civic issue reports yet.
                     </Card>
                   ) : (
-                    <div className="space-y-4">
-                      <AnimatePresence>
-                        {complaints.map((c) => (
-                          <motion.div key={c.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} layout>
-                            <Card className="glass-panel overflow-hidden border-border/40 shadow-card hover:border-primary/30 transition-colors">
-                              <div className="p-5 flex flex-col md:flex-row gap-5">
-
-                                {/* Left: Thumbnail */}
-                                {c.before_image && (
-                                  <div className="w-full md:w-32 h-32 shrink-0 rounded-xl overflow-hidden border border-border/50 relative group">
-                                    <img src={c.before_image} alt="Issue" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                    <div className="absolute top-1 left-1">
-                                      {getSeverityBadge(c.severity)}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Right: Info */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                      <h3 className="font-bold text-foreground text-lg uppercase truncate">{c.issue_type.replace('_', ' ')}</h3>
-                                      <p className="text-xs text-muted-foreground flex items-center mt-1">
-                                        <MapPin className="h-3 w-3 mr-1" /> {c.address || `${c.latitude}, ${c.longitude}`}
-                                      </p>
-                                    </div>
-                                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${getStatusColor(c.status)}`}>
-                                      {c.status}
-                                    </span>
-                                  </div>
-
-                                  <p className="text-sm text-foreground mb-4 line-clamp-2">{c.description}</p>
-
-                                  <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
-                                    <span className="flex items-center"><Clock className="h-3.5 w-3.5 mr-1" /> Ref: {c.reference_number}</span>
-                                    <span className="flex items-center"><AlertCircle className="h-3.5 w-3.5 mr-1 text-primary" /> AI Est. Resolution: {c.predicted_days} Days</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* RESOLVED STATE - BEFORE / AFTER FEEDBACK UI */}
-                              {c.status === 'Resolved' && c.after_image && (
-                                <div className="border-t border-border/50 bg-secondary/10 p-5">
-                                  <h4 className="font-bold text-sm text-primary mb-3 flex items-center">
-                                    <CheckCircle className="h-4 w-4 mr-1.5" /> Engineer Work Verification
-                                  </h4>
-                                  <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="relative rounded-lg overflow-hidden border-2 border-dashed border-border/50">
-                                      <span className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm text-xs font-bold px-2 py-1 rounded text-foreground">Before</span>
-                                      <img src={c.before_image} className="w-full h-32 object-cover" alt="Before" />
-                                    </div>
-                                    <div className="relative rounded-lg overflow-hidden border-2 border-primary shadow-glow">
-                                      <span className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded shadow-sm">After Resolution</span>
-                                      <img src={c.after_image} className="w-full h-32 object-cover" alt="After" />
-                                    </div>
-                                  </div>
-
-                                  {!c.citizen_satisfied ? (
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                      <Button onClick={() => handleFeedback(c.id, true)} className="flex-1 bg-green-500 hover:bg-green-600 text-white shadow-glow">
-                                        <CheckCircle className="mr-2 h-4 w-4" /> Satisfied - Close Ticket
-                                      </Button>
-                                      <Button onClick={() => handleFeedback(c.id, false)} variant="destructive" className="flex-1">
-                                        <AlertCircle className="mr-2 h-4 w-4" /> Not Satisfied - Reopen
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm font-bold text-success flex items-center justify-center p-2 bg-success/10 rounded-lg">
-                                      <CheckCircle className="mr-2 h-4 w-4" /> You confirmed this issue was successfully resolved.
-                                    </p>
-                                  )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {complaints.map((c) => (
+                        <motion.div key={c.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+                          <Card className="glass-panel overflow-hidden border-border/40 shadow-card hover:border-primary/30 transition-shadow">
+                            <div className="p-5 flex gap-5">
+                              {c.before_image && (
+                                <div className="h-24 w-24 shrink-0 rounded-xl overflow-hidden border border-border/50">
+                                  <img src={c.before_image} alt="Issue" className="h-full w-full object-cover" />
                                 </div>
                               )}
-
-                            </Card>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-bold text-foreground uppercase truncate">{c.issue_type.replace('_', ' ')}</h3>
+                                  <Badge className={getStatusColor(c.status)}>{c.status}</Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1 mb-2 line-clamp-1">{c.address}</p>
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground/70 uppercase">
+                                  <span>Ref: {c.reference_number}</span>
+                                  <span>•</span>
+                                  <span className="text-primary">{c.predicted_days} Days Est.</span>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        </motion.div>
+                      ))}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </motion.div>
+            )}
 
+            {/* CASE 2: REPORT PORTAL */}
+            {activeTab === 'report' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* LEFT: SUBMIT FORM */}
+                <div className={`transition-all duration-500 ${analysis ? 'lg:col-span-4' : 'lg:col-span-12'}`}>
+                  <Card className="glass-panel border-border/50 shadow-elevated">
+                    <CardHeader className="border-b border-border/50 bg-secondary/20 pb-4 text-center">
+                      <CardTitle className="inline-flex items-center gap-2 text-2xl font-black uppercase tracking-tight">
+                        <Upload className="h-6 w-6 text-primary" /> Report Interface
+                      </CardTitle>
+                      <CardDescription className="font-bold">Upload and analyze civic issues instantly</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-8 space-y-6">
+                      <ImageAnalyzer onAnalysisComplete={setAnalysis} />
+                      {analysis && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-5 pt-4 border-t border-border/50">
+                          <div className="space-y-1 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                            <p className="text-sm font-bold text-primary flex items-center uppercase tracking-wide"><MapPin className="h-4 w-4 mr-2" /> Set Location</p>
+                            <p className="text-xs text-muted-foreground/80 font-medium">Please pinpoint the issue on the map or use Auto-GPS.</p>
+                          </div>
+                          <Button onClick={() => navigate('/file-complaint', { state: { analysis, location, address } })} className="w-full h-14 gradient-primary text-primary-foreground font-black text-xl hover:opacity-90 transition-all shadow-glow mt-4 group">
+                            File a Complaint <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1" />
+                          </Button>
+                        </motion.div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* RIGHT: DYNAMIC (MAP or INFO) */}
+                {analysis && (
+                  <div className="lg:col-span-8 space-y-6">
+                    <Card className="glass-panel border-border/50 shadow-elevated overflow-hidden">
+                      <CardHeader className="bg-primary/10 border-b border-border/50 p-5">
+                        <CardTitle className="text-xl font-black flex items-center gap-2 text-primary uppercase">
+                          <Sparkles className="h-6 w-6" /> AI Analysis Report
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-6 flex items-center gap-6 text-foreground">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-success/20 shadow-inner">
+                          <CheckCircle className="h-10 w-10 text-success" />
+                        </div>
+                        <div>
+                          <div className="flex items-center flex-wrap gap-3">
+                            <h2 className="text-3xl font-black uppercase leading-none">{analysis.issueType.replace('_', ' ')}</h2>
+                            <Badge className="bg-primary/20 text-primary border-primary/30 font-black text-xs">{(analysis.confidence * 100).toFixed(1)}% Confidence</Badge>
+                          </div>
+                          <p className="mt-3 text-base text-muted-foreground font-bold leading-relaxed">{analysis.description}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="glass-panel border-border/50 shadow-elevated overflow-hidden flex flex-col h-[600px]">
+                      <CardHeader className="bg-secondary/20 border-b border-border/50 shrink-0 p-6">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <CardTitle className="text-2xl font-black flex items-center gap-3 uppercase">
+                              <MapPin className="h-6 w-6 text-primary" /> Pinpoint Location
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground font-bold">Drag or click to set coordinates</CardDescription>
+                          </div>
+                          <Button variant="outline" onClick={captureLocation} className="h-12 px-6 hover:bg-primary/10 hover:text-primary border-border/50 group font-bold">
+                            <Navigation className="h-5 w-5 mr-2 group-hover:animate-bounce" /> Auto-GPS
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <div className="flex-1 relative z-0">
+                        <MapContainer center={[20.5937, 78.9629]} zoom={4} style={{ height: '100%', width: '100%' }}>
+                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                          <LocationMarker position={location} setPosition={setLocation} onLocationChange={reverseGeocode} />
+                        </MapContainer>
+                        <div className="absolute bottom-6 left-6 right-6 z-[400] bg-background/95 backdrop-blur-md p-5 rounded-2xl border border-border/50 shadow-2xl">
+                          <div className="flex flex-col md:flex-row gap-4 items-center">
+                            <Input placeholder="Manually type address..." value={address} onChange={e => setAddress(e.target.value)} className="flex-1 bg-secondary/50 h-12 font-bold" />
+                            {location && <Badge className="h-12 px-5 text-sm font-black bg-primary/10 text-primary border-primary/20">{location.lat.toFixed(4)}, {location.lng.toFixed(4)}</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>

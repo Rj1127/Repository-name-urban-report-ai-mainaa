@@ -21,6 +21,7 @@ router.post("/register", async (req, res) => {
         const existingUser = await User.findOne({ email });
         if (existingUser) return res.status(400).json({ message: "User already exists with this email" });
 
+        /* TEMPORARILY BYPASSED OTP
         if (!otp) {
             // Generate and send OTP
             const code = generateOTP();
@@ -37,6 +38,7 @@ router.post("/register", async (req, res) => {
         const otpRecord = await OTP.findOne({ email });
         if (!otpRecord) return res.status(400).json({ message: "OTP expired or missing. Please request a new one." });
         if (otpRecord.otp !== otp) return res.status(401).json({ message: "Invalid OTP code." });
+        */
 
         // OTP Valid! Create the user.
         const user = await User.create({
@@ -72,6 +74,7 @@ router.post("/login", async (req, res) => {
         const user = await User.findOne({ email, password });
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
+        /* TEMPORARILY BYPASSED OTP
         if (!otp) {
             // Generate and send OTP
             const code = generateOTP();
@@ -91,8 +94,40 @@ router.post("/login", async (req, res) => {
 
         // OTP Valid! Delete consumed OTP and authenticate user.
         await OTP.deleteOne({ email });
+        */
 
         res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// UPDATE PROFILE
+router.put("/profile", async (req, res) => {
+    try {
+        const { id, name, email, phone, avatar, password, oldPassword } = req.body;
+
+        if (!id) return res.status(400).json({ message: "User ID is required" });
+
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // If password change is requested, verify old password
+        if (password) {
+            if (!oldPassword) return res.status(400).json({ message: "Old password is required to set a new password" });
+            if (user.password !== oldPassword) return res.status(401).json({ message: "Incorrect old password" });
+            user.password = password;
+        }
+
+        // Update other fields if provided
+        if (name) user.name = name;
+        if (email) user.email = email;
+        if (phone) user.phone = phone;
+        if (avatar) user.avatar = avatar;
+
+        await user.save();
+
+        res.json({ message: "Profile updated successfully", user });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
