@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieCha
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'command-center';
+  const activeTab = searchParams.get('tab') || 'dashboard';
   
   const [complaints, setComplaints] = useState<any[]>([]);
   const [engineers, setEngineers] = useState<any[]>([]);
@@ -43,6 +43,9 @@ export default function AdminDashboard() {
   // Notice Modal
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState("Show-cause: The resolution provided is unsatisfactory. Provide a valid reason within 24h.");
+  
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Sorting & Filtering
   const [sortBy, setSortBy] = useState<'created_at' | 'predicted_days' | 'severity'>('created_at');
@@ -157,6 +160,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteEngineer = async (id: string, name: string) => {
+    if (!window.confirm(`PERMANENT ACTION: Are you sure you want to remove engineer ${name} from the system? This cannot be undone.`)) return;
+    
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Deletion failed");
+      toast.success("Engineer record removed successfully");
+      setEngineerModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const getSeverityBadge = (sev: string) => {
     if (sev === 'High') return <Badge variant="destructive" className="animate-pulse shadow-glow">HIGH</Badge>;
     if (sev === 'Medium') return <Badge className="bg-orange-500 hover:bg-orange-500">MEDIUM</Badge>;
@@ -184,27 +204,38 @@ export default function AdminDashboard() {
     }
   };
 
-  const sortedComplaints = [...complaints].sort((a, b) => {
-    // Top Priority: Dissatisfied Citizens
-    if (a.satisfaction_status === 'Dissatisfied' && b.satisfaction_status !== 'Dissatisfied') return -1;
-    if (a.satisfaction_status !== 'Dissatisfied' && b.satisfaction_status === 'Dissatisfied') return 1;
+  const sortedComplaints = [...complaints]
+    .filter(c => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        c.reference_number?.toLowerCase().includes(term) ||
+        c.issue_type?.toLowerCase().includes(term) ||
+        c.citizen_name?.toLowerCase().includes(term) ||
+        c.address?.toLowerCase().includes(term)
+      );
+    })
+    .sort((a, b) => {
+      // Top Priority: Dissatisfied Citizens
+      if (a.satisfaction_status === 'Dissatisfied' && b.satisfaction_status !== 'Dissatisfied') return -1;
+      if (a.satisfaction_status !== 'Dissatisfied' && b.satisfaction_status === 'Dissatisfied') return 1;
 
-    let valA = a[sortBy];
-    let valB = b[sortBy];
+      let valA = a[sortBy];
+      let valB = b[sortBy];
 
-    // Severity weighing for sorting
-    if (sortBy === 'severity') {
-      const weights: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
-      valA = weights[a.severity] || 0;
-      valB = weights[b.severity] || 0;
-    }
+      // Severity weighing for sorting
+      if (sortBy === 'severity') {
+        const weights: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        valA = weights[a.severity] || 0;
+        valB = weights[b.severity] || 0;
+      }
 
-    if (sortOrder === 'asc') {
-      return valA > valB ? 1 : -1;
-    } else {
-      return valA < valB ? 1 : -1;
-    }
-  });
+      if (sortOrder === 'asc') {
+        return valA > valB ? 1 : -1;
+      } else {
+        return valA < valB ? 1 : -1;
+      }
+    });
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -215,35 +246,40 @@ export default function AdminDashboard() {
         <main className="flex-1 overflow-y-auto p-4 md:p-8 hide-scrollbar">
           <AnimatePresence mode="wait">
             
-            {/* 1. COMMAND CENTRE */}
+            {/* 1. COMMAND CENTRE (COMPLAINT MANAGEMENT) */}
             {activeTab === 'command-center' && (
-              <motion.div key="command" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <div className="mb-8">
+              <motion.div key="command" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                <div className="mb-4">
                   <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
                     <Shield className="h-8 w-8 text-primary" /> Command Centre
                   </h1>
-                  <p className="text-muted-foreground mt-1 text-sm">Monitor regional infrastructure issues and dispatch engineers.</p>
+                  <p className="text-muted-foreground mt-1 text-sm">Strategic dispatch and infrastructure monitoring hub.</p>
                 </div>
 
-                <div className="flex gap-4 mb-6">
+                <div className="flex gap-4 mb-6 sticky top-0 z-20 bg-background/80 backdrop-blur-md py-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search by Reference # or Type..." className="pl-10 h-12 bg-secondary/30 border-border/50" />
+                    <Input 
+                      placeholder="Search regional issues..." 
+                      className="pl-10 h-12 bg-secondary/30 border-border/50 rounded-xl" 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                   </div>
                   <div className="flex gap-2">
                     <select 
                       value={sortBy} 
                       onChange={(e: any) => setSortBy(e.target.value as any)}
-                      className="bg-secondary/30 border border-border/50 rounded-md px-3 text-sm h-12 focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="bg-secondary/30 border border-border/50 rounded-xl px-3 text-sm h-12 focus:outline-none focus:ring-1 focus:ring-primary font-bold"
                     >
-                      <option value="created_at">Report Date</option>
-                      <option value="predicted_days">AI Predicted Time</option>
-                      <option value="severity">Severity Level</option>
+                      <option value="created_at">Date Reported</option>
+                      <option value="predicted_days">AI Priority</option>
+                      <option value="severity">Severity Scale</option>
                     </select>
                     <Button 
                       variant="outline" 
                       size="icon" 
-                      className="h-12 w-12 border-border/50"
+                      className="h-12 w-12 border-border/50 rounded-xl"
                       onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                     >
                       <TrendingUp className={`h-4 w-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
@@ -252,102 +288,148 @@ export default function AdminDashboard() {
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center justify-center p-12"><Activity className="animate-spin text-primary" /></div>
+                  <div className="flex items-center justify-center p-12"><Activity className="animate-spin text-primary h-12 w-12" /></div>
                 ) : (
-                  <div className="space-y-4">
-                    {sortedComplaints.map(c => (
-                      <Card key={c.id || c._id} className="glass-panel hover:border-primary/50 transition-colors p-5 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-3 flex gap-2">
-                          <span className={`px-2.5 py-1 text-xs font-bold rounded-full border border-transparent ${getStatusColor(c.status)}`}>
-                            {c.status}
-                          </span>
-                        </div>
+                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pb-12">
+                    {/* SECTION 1: NEWLY REGISTERED & DISPATCH READY */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between px-2">
+                        <h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-blue-500">
+                          <AlertOctagon className="h-5 w-5" /> Dispatch Needed
+                        </h2>
+                        <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/20">{sortedComplaints.filter(c => c.status === 'New').length}</Badge>
+                      </div>
+                      
+                      <div className="space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar">
+                        {sortedComplaints.filter(c => c.status === 'New').length === 0 ? (
+                          <div className="text-center py-20 bg-secondary/10 rounded-3xl border-2 border-dashed border-border/40 text-muted-foreground italic">No new issues to dispatch</div>
+                        ) : (
+                          sortedComplaints.filter(c => c.status === 'New').map(c => (
+                            <Card key={c.id || c._id} className="glass-panel hover:border-blue-500/50 transition-all p-5 relative group border-l-4 border-l-blue-500">
+                               <div className="flex justify-between items-start mb-4">
+                                  {getSeverityBadge(c.severity)}
+                                  <span className="text-[10px] font-black tracking-widest text-muted-foreground bg-secondary px-2 py-0.5 rounded-full uppercase">{c.reference_number}</span>
+                               </div>
+                               <h3 className="font-bold text-lg text-foreground capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
+                               <p className="text-xs text-muted-foreground font-medium mb-4 flex items-start gap-1">
+                                  <MapPin className="h-3 w-3 mt-0.5 shrink-0" /> {c.address || 'Location Hidden'}
+                               </p>
+                               <div className="flex flex-col gap-3">
+                                  <div className="flex items-center gap-2 text-[11px] font-bold text-orange-500">
+                                     <Clock className="h-3.5 w-3.5" /> AI ETA: {c.predicted_days} Days
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                     <Button variant="outline" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="font-bold border-border shadow-sm">Details</Button>
+                                     <Button size="sm" onClick={() => handleOpenAssign(c)} className="gradient-primary text-white font-bold shadow-lg shadow-blue-500/20">Dispatch</Button>
+                                  </div>
+                               </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </div>
 
-                        <div className="flex flex-col md:flex-row gap-5 pr-20">
-                          <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden border border-border/50">
-                            {c.before_image ?
-                              <img src={c.before_image} alt="Issue" className="w-full h-full object-cover" /> :
-                              <div className="w-full h-full bg-secondary flex items-center justify-center"><AlertTriangle className="h-6 w-6 text-muted-foreground" /></div>
-                            }
-                          </div>
+                    {/* SECTION 2: ACTIVE & IN PROGRESS */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between px-2">
+                        <h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-purple-500">
+                          <Activity className="h-5 w-5" /> Field Operations
+                        </h2>
+                        <Badge variant="secondary" className="bg-purple-500/10 text-purple-500 border-purple-500/20">{sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).length}</Badge>
+                      </div>
 
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {getSeverityBadge(c.severity)}
-                              <span className="text-xs font-bold tracking-wider text-muted-foreground flex items-center">
-                                <Hash className="h-3 w-3 mr-[2px]" />{c.reference_number}
-                              </span>
-                            </div>
-                            <h3 className="font-bold text-lg text-foreground capitalize mb-1">{c.issue_type?.replace('_', ' ') || 'Unknown Issue'}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-1 mb-2">Reported by: <span className="font-semibold">{c.citizen_name || 'Anonymous'}</span></p>
+                      <div className="space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar">
+                        {sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).length === 0 ? (
+                          <div className="text-center py-20 bg-secondary/10 rounded-3xl border-2 border-dashed border-border/40 text-muted-foreground italic">No ongoing field operations</div>
+                        ) : (
+                          sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).map(c => (
+                            <Card key={c.id || c._id} className="glass-panel hover:border-purple-500/50 transition-all p-5 relative border-l-4 border-l-purple-500">
+                               <div className="flex justify-between items-center mb-4">
+                                  <Badge className="bg-purple-500/10 text-purple-500 border-transparent text-[10px] font-black tracking-widest">{c.status?.toUpperCase()}</Badge>
+                                  <span className="text-[10px] font-black text-muted-foreground uppercase">{c.reference_number}</span>
+                               </div>
+                               <h3 className="font-bold text-lg text-foreground capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
+                               <p className="text-xs text-muted-foreground mb-4">Engineer: <span className="font-bold text-foreground">{c.assigned_engineer_name || 'N/A'}</span></p>
+                               
+                               <div className="flex flex-col gap-3">
+                                  {c.satisfaction_status === "Dissatisfied" && (
+                                     <Button 
+                                       variant="destructive" 
+                                       size="sm"
+                                       onClick={() => { 
+                                         setSelectedComplaint(c); 
+                                         setNoticeMessage(`Disciplinary Notice: A citizen has reported dissatisfaction with your resolution for Ref: ${c.reference_number}. AI Analysis: ${c.resolution_analysis?.analysis || 'Conflict detected'}. Please provide a formal explanation immediately.`);
+                                         setNoticeModalOpen(true); 
+                                       }} 
+                                       className="w-full font-black animate-pulse shadow-glow h-9"
+                                     >
+                                       <AlertOctagon className="mr-2 h-4 w-4" /> Issue One-Click Notice
+                                     </Button>
+                                  )}
+                                  <Button variant="secondary" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full font-bold">Monitor Status</Button>
+                               </div>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </div>
 
-                            <div className="flex flex-wrap items-center gap-4 text-xs font-medium mt-3">
-                              <span className="flex items-center text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md">
-                                <Clock className="h-3.5 w-3.5 mr-1" /> AI ETA: {c.predicted_days} Days
-                              </span>
-                              {c.status !== "New" && c.assigned_engineer_name && (
-                                <span className="flex items-center text-purple-500 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20">
-                                  <Users className="h-3.5 w-3.5 mr-1" /> Assigned: {c.assigned_engineer_name} ({c.assigned_engineer_dept || 'Resolver'})
-                                </span>
-                              )}
-                              <span className="flex items-center text-muted-foreground">
-                                {new Date(c.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
+                    {/* SECTION 3: RESOLVED & ARCHIVED */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between px-2">
+                        <h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-emerald-500">
+                          <CheckCircle className="h-5 w-5" /> Completed Log
+                        </h2>
+                        <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).length}</Badge>
+                      </div>
 
-                            <div className="flex flex-col items-center justify-end shrink-0 md:justify-start mt-4 md:mt-0 gap-2">
-                            <Button variant="outline" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full md:w-auto border-primary/30 hover:bg-primary/10 font-bold">
-                              View Details
-                            </Button>
-                            {c.status === "New" && (
-                              <Button onClick={() => handleOpenAssign(c)} className="w-full md:w-auto gradient-primary text-primary-foreground font-bold shadow-glow">
-                                AI Suggest Engineer
-                              </Button>
-                            )}
-                            {c.satisfaction_status === "Dissatisfied" && (
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => { 
-                                  setSelectedComplaint(c); 
-                                  setNoticeMessage(`Disciplinary Notice: A citizen has reported dissatisfaction with your resolution for Ref: ${c.reference_number}. AI Analysis: ${c.resolution_analysis?.analysis || 'Conflict detected'}. Please provide a formal explanation immediately.`);
-                                  setNoticeModalOpen(true); 
-                                }} 
-                                className="w-full md:w-auto font-black shadow-glow animate-pulse"
-                              >
-                                <AlertOctagon className="mr-2 h-4 w-4" /> Issue One-Click Notice
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                      <div className="space-y-4 max-h-[1000px] overflow-y-auto pr-2 custom-scrollbar">
+                        {sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).length === 0 ? (
+                          <div className="text-center py-20 bg-secondary/10 rounded-3xl border-2 border-dashed border-border/40 text-muted-foreground italic">No historical data available</div>
+                        ) : (
+                          sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).map(c => (
+                            <Card key={c.id || c._id} className="glass-panel p-5 border-l-4 border-l-emerald-500 bg-emerald-500/5">
+                               <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center gap-2">
+                                     <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                     <span className="text-[10px] font-black text-emerald-600 uppercase">Successful Outcome</span>
+                                  </div>
+                                  <span className="text-[10px] font-black text-muted-foreground uppercase">{c.reference_number}</span>
+                               </div>
+                               <h3 className="font-bold text-lg text-foreground/80 capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
+                               <p className="text-xs text-muted-foreground mb-4 font-medium">Closed on: {new Date(c.updated_at || c.created_at).toLocaleDateString()}</p>
+                               <Button variant="outline" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full font-bold border-emerald-500/20 hover:bg-emerald-500/10">View Archive</Button>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </motion.div>
             )}
 
-            {/* 2. ADMIN DASHBOARD (STATS) */}
+            {/* 2. ADMIN DASHBOARD (STATS & ANALYTICS) */}
             {activeTab === 'dashboard' && (
-              <motion.div key="stats" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
-                <div className="mb-8">
+              <motion.div key="stats" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-8">
+                <div className="mb-2">
                   <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                    <BarChart3 className="h-8 w-8 text-blue-500" /> Admin Dashboard
+                    <BarChart3 className="h-8 w-8 text-blue-500" /> Executive Analytics
                   </h1>
-                  <p className="text-muted-foreground mt-1 text-sm">System-wide performance overview and civic health metrics.</p>
+                  <p className="text-muted-foreground mt-1 text-sm">Real-time system performance and regional infrastructure metrics.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {[
                     { label: 'Total Complaints', value: complaints.length, icon: FileText, color: 'text-blue-500' },
                     { label: 'Resolved Cases', value: complaints.filter(c => c.status === 'Closed' || c.status === 'Resolved').length, icon: CheckCircle, color: 'text-emerald-500' },
-                    { label: 'Active Tasks', value: complaints.filter(c => ['Assigned', 'In Progress', 'Forwarded'].includes(c.status)).length, icon: Activity, color: 'text-orange-500' },
+                    { label: 'Pending Actions', value: complaints.filter(c => c.status === 'New').length, icon: AlertOctagon, color: 'text-red-500' },
                     { label: 'Avg. Response', value: '1.2 Days', icon: Clock, color: 'text-purple-500' }
                   ].map((stat, i) => (
-                    <Card key={i} className="glass-panel border-border/40">
+                    <Card key={i} className="glass-panel border-border/40 shadow-sm hover:border-primary/30 transition-all">
                       <CardContent className="p-6">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-bold text-muted-foreground uppercase">{stat.label}</p>
+                          <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
                           <stat.icon className={`h-5 w-5 ${stat.color}`} />
                         </div>
                         <div className="text-3xl font-black text-foreground">{stat.value}</div>
@@ -356,9 +438,22 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
+                <div className="relative max-w-2xl mx-auto w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search across all categories..." 
+                    className="pl-10 h-12 bg-secondary/30 border-border/50 rounded-xl"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <Card className="glass-panel border-border/40 min-h-[400px]">
-                    <CardHeader><CardTitle className="text-lg font-bold uppercase tracking-wider">Issue Distribution</CardTitle></CardHeader>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold uppercase tracking-wider">Issue Type Distribution</CardTitle>
+                      <CardDescription>Breakdown of reported problems by category</CardDescription>
+                    </CardHeader>
                     <CardContent className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={[
@@ -366,26 +461,129 @@ export default function AdminDashboard() {
                           { name: 'Pothole', value: complaints.filter(c => c.issue_type === 'pothole').length },
                           { name: 'Water', value: complaints.filter(c => c.issue_type === 'waterlogging').length },
                           { name: 'Light', value: complaints.filter(c => c.issue_type === 'broken_streetlight').length },
+                          { name: 'Other', value: complaints.filter(c => !['garbage', 'pothole', 'waterlogging', 'broken_streetlight'].includes(c.issue_type)).length },
                         ]}>
-                          <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))'}} />
-                          <Bar dataKey="value" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                          <XAxis dataKey="name" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#888888" fontSize={10} tickLine={false} axisLine={false} />
+                          <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))'}} />
+                          <Bar dataKey="value" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
 
                   <Card className="glass-panel border-border/40 min-h-[400px]">
-                    <CardHeader><CardTitle className="text-lg font-bold uppercase tracking-wider">Operational Efficiency</CardTitle></CardHeader>
-                    <CardContent className="flex items-center justify-center">
-                       <div className="text-center">
-                          <TrendingUp className="h-16 w-16 text-emerald-500 mx-auto mb-4 opacity-50" />
-                          <p className="text-muted-foreground font-medium">94% Efficiency Rate</p>
-                          <p className="text-4xl font-black text-foreground mt-2">+12% from last month</p>
-                       </div>
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold uppercase tracking-wider">Case Status Lifecycle</CardTitle>
+                      <CardDescription>Operational flow of all registered complaints</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-center h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'New', value: complaints.filter(c => c.status === 'New').length },
+                              { name: 'Assigned', value: complaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).length },
+                              { name: 'Closed', value: complaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).length },
+                            ]}
+                            cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value"
+                          >
+                            <Cell fill="#3b82f6" />
+                            <Cell fill="#f97316" />
+                            <Cell fill="#10b981" />
+                          </Pie>
+                          <Tooltip contentStyle={{backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border))'}} />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </CardContent>
                   </Card>
+                </div>
+
+                {/* THE THREE SECTIONS AT BOTTOM */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                  {/* 1. NEWLY REGISTERED */}
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-blue-500 bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 shadow-sm">
+                      <AlertOctagon className="h-5 w-5" /> Newly Registered
+                      <Badge className="ml-auto bg-blue-500 text-white font-black">{sortedComplaints.filter(c => c.status === 'New').length}</Badge>
+                    </h2>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                      {sortedComplaints.filter(c => c.status === 'New').length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border/50">No new complaints</div>
+                      ) : (
+                        sortedComplaints.filter(c => c.status === 'New').map(c => (
+                          <div key={c._id || c.id} onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="p-4 rounded-xl border border-border/40 bg-card hover:border-blue-500/50 cursor-pointer transition-all shadow-sm group relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-500" />
+                             <div className="flex justify-between items-start mb-2">
+                               <h4 className="font-bold text-sm capitalize">{c.issue_type?.replace('_', ' ')}</h4>
+                               <Badge variant="outline" className="text-[10px] py-0">{c.reference_number}</Badge>
+                             </div>
+                             <p className="text-[11px] text-muted-foreground line-clamp-1 mb-2 font-medium">{c.address || 'Location Hidden'}</p>
+                             <div className="flex justify-between items-center text-[10px]">
+                               <span className="font-bold text-primary">{new Date(c.created_at).toLocaleDateString()}</span>
+                               <Button size="sm" className="h-7 text-[10px] px-2 bg-blue-500 hover:bg-blue-600">Action Required</Button>
+                             </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. ASSIGNED COMPLAINTS */}
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-orange-500 bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 shadow-sm">
+                      <Clock className="h-5 w-5" /> Active Assignments
+                      <Badge className="ml-auto bg-orange-500 text-white font-black">{sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).length}</Badge>
+                    </h2>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                       {sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border/50">No active assignments</div>
+                      ) : (
+                        sortedComplaints.filter(c => ['Forwarded', 'Assigned', 'In Progress'].includes(c.status)).map(c => (
+                          <div key={c._id || c.id} onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="p-4 rounded-xl border border-border/40 bg-card hover:border-orange-500/50 cursor-pointer transition-all shadow-sm group relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-1.5 h-full bg-orange-500" />
+                             <div className="flex justify-between items-start mb-2">
+                               <h4 className="font-bold text-sm capitalize">{c.issue_type?.replace('_', ' ')}</h4>
+                               <span className="text-[10px] font-bold text-orange-500 uppercase tracking-tighter">{c.status}</span>
+                             </div>
+                             <p className="text-[11px] text-muted-foreground line-clamp-1 mb-2 font-bold italic">By: {c.assigned_engineer_name || 'N/A'}</p>
+                             <div className="flex justify-between items-center text-[10px]">
+                               <span className="font-bold text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</span>
+                               <span className="font-black text-rose-500">{c.predicted_days} Days ETA</span>
+                             </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3. CLOSED COMPLAINTS */}
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-emerald-500 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 shadow-sm">
+                      <CheckCircle className="h-5 w-5" /> Completed Tasks
+                      <Badge className="ml-auto bg-emerald-500 text-white font-black">{sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).length}</Badge>
+                    </h2>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                       {sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border/50">No completed tasks</div>
+                      ) : (
+                        sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).map(c => (
+                          <div key={c._id || c.id} onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="p-4 rounded-xl border border-border/40 bg-card hover:border-emerald-500/50 cursor-pointer transition-all shadow-sm group relative overflow-hidden">
+                             <div className="absolute top-0 right-0 w-1.5 h-full bg-emerald-500" />
+                             <div className="flex justify-between items-start mb-2">
+                               <h4 className="font-bold text-sm capitalize">{c.issue_type?.replace('_', ' ')}</h4>
+                               <CheckCircle className="h-4 w-4 text-emerald-500" />
+                             </div>
+                             <p className="text-[11px] text-muted-foreground line-clamp-1 mb-2">{c.citizen_name || 'Anonymous citizen'}</p>
+                             <div className="flex justify-between items-center text-[10px]">
+                               <span className="font-bold text-muted-foreground">Ended: {new Date(c.updated_at || c.created_at).toLocaleDateString()}</span>
+                               <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[9px] font-black border-none">ARCHIVED</Badge>
+                             </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -408,8 +606,19 @@ export default function AdminDashboard() {
                          <div className="flex-1">
                            <h4 className="text-xl font-bold text-foreground">{eng.name}</h4>
                            <p className="text-sm text-muted-foreground">{eng.dept_name || 'General Resolver'}</p>
+                           <p className="text-[10px] font-black text-primary/70 uppercase mt-0.5">Joined: {new Date(eng.created_at).toLocaleDateString()}</p>
                          </div>
-                         <Badge className={getEngineerStatusColor(eng.activity_status)}>{eng.activity_status}</Badge>
+                         <div className="flex flex-col items-end gap-2">
+                           <Badge className={getEngineerStatusColor(eng.activity_status)}>{eng.activity_status}</Badge>
+                           <Button 
+                             size="sm" 
+                             variant="ghost" 
+                             onClick={(e) => { e.stopPropagation(); handleDeleteEngineer(eng.id || eng._id, eng.name); }}
+                             className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
                        </div>
                        
                        <div className="space-y-4">
@@ -733,11 +942,15 @@ export default function AdminDashboard() {
                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Experience</h4>
                     <p className="text-sm font-bold text-foreground">{viewingEngineer.experience_level || 'Senior'}</p>
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Government ID</h4>
-                    <p className="text-sm font-mono font-bold text-primary">{viewingEngineer.gov_id || 'VERIFIED'}</p>
-                  </div>
-               </div>
+                   <div>
+                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Government ID</h4>
+                     <p className="text-sm font-mono font-bold text-primary">{viewingEngineer.gov_id || 'VERIFIED'}</p>
+                   </div>
+                   <div>
+                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Registered On</h4>
+                     <p className="text-sm font-bold text-foreground">{new Date(viewingEngineer.created_at).toLocaleDateString()} {new Date(viewingEngineer.created_at).toLocaleTimeString()}</p>
+                   </div>
+                </div>
 
                <div className="space-y-3 pt-4 border-t border-border/30">
                   <div>
@@ -763,9 +976,18 @@ export default function AdminDashboard() {
                   </div>
                </div>
 
-               <Button onClick={() => setEngineerModalOpen(false)} className="w-full bg-secondary text-foreground hover:bg-secondary/80 font-bold">
-                  Close Profile
-               </Button>
+               <div className="flex gap-3 pt-2">
+                 <Button onClick={() => setEngineerModalOpen(false)} className="flex-1 bg-secondary text-foreground hover:bg-secondary/80 font-bold">
+                    Close Profile
+                 </Button>
+                 <Button 
+                   onClick={() => handleDeleteEngineer(viewingEngineer.id || viewingEngineer._id, viewingEngineer.name)} 
+                   variant="destructive"
+                   className="flex-1 font-bold shadow-glow-destructive"
+                 >
+                    <Trash2 className="h-4 w-4 mr-2" /> Remove Engineer
+                 </Button>
+               </div>
             </div>
           )}
         </DialogContent>

@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
         }
 
         const engineers = await User.find(filter)
-            .select("name email phone dept_name activity_status experience_level gov_id area city state head_of_dept position area_expertise")
+            .select("name email phone dept_name activity_status experience_level gov_id area city state head_of_dept position area_expertise created_at")
             .lean();
 
         // Count active tasks for each engineer
@@ -36,6 +36,33 @@ router.get("/", async (req, res) => {
         });
 
         res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE ENGINEER
+router.delete("/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        
+        // 1. Check if engineer has active tasks
+        const activeTasks = await Assignment.countDocuments({
+            engineer_id: id,
+            status: { $in: ["Assigned", "In Progress"] }
+        });
+
+        if (activeTasks > 0) {
+            return res.status(400).json({ error: "Cannot delete engineer with active assignments. Reassign their tasks first." });
+        }
+
+        // 2. Delete engineer
+        await User.findByIdAndDelete(id);
+        
+        // 3. Cleanup archived assignments (optional, but good for cleanliness)
+        await Assignment.deleteMany({ engineer_id: id });
+
+        res.json({ message: "Engineer record removed successfully" });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

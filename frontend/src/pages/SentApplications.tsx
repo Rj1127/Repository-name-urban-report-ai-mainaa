@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, MapPin, Clock, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileText, MapPin, Clock, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
@@ -27,6 +27,22 @@ export default function SentApplications() {
             toast.error('Failed to load applications');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string, ref: string) => {
+        if (!window.confirm(`Are you sure you want to withdraw and delete complaint ${ref}?`)) return;
+        
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/${id}`, {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Delete failed");
+            toast.success("Complaint withdrawn successfully");
+            fetchComplaints();
+        } catch (err: any) {
+            toast.error(err.message);
         }
     };
 
@@ -88,9 +104,20 @@ export default function SentApplications() {
                                                                 <MapPin className="h-3.5 w-3.5 mr-1" /> {c.address || `${c.latitude}, ${c.longitude}`}
                                                             </p>
                                                         </div>
-                                                        <span className={`px-3 py-1 text-sm font-bold rounded-full border ${getStatusColor(c.status)}`}>
-                                                            {c.status}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            {c.status === 'New' && (
+                                                                <button 
+                                                                    onClick={() => handleDelete(c.id || c._id, c.reference_number)}
+                                                                    className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-full hover:bg-destructive/10"
+                                                                    title="Withdraw Complaint"
+                                                                >
+                                                                    <Trash2 className="h-5 w-5" />
+                                                                </button>
+                                                            )}
+                                                            <span className={`px-3 py-1 text-sm font-bold rounded-full border ${getStatusColor(c.status)}`}>
+                                                                {c.status}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div className="bg-secondary/40 border border-border/40 p-3 rounded-lg mb-3 mt-2">
                                                         <p className="text-[15px] text-foreground font-medium whitespace-pre-wrap">{c.description}</p>

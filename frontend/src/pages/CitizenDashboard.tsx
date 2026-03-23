@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, MapPin, Search, AlertCircle, CheckCircle, Clock, Map, Sparkles, Navigation, FileText, ArrowRight, Star, ThumbsUp, ThumbsDown, Camera, Brain, AlertTriangle } from 'lucide-react';
+import { Upload, MapPin, Search, AlertCircle, CheckCircle, Clock, Map, Sparkles, Navigation, FileText, ArrowRight, Star, ThumbsUp, ThumbsDown, Camera, Brain, AlertTriangle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -175,6 +175,22 @@ export default function CitizenDashboard() {
     }
   };
 
+  const handleDelete = async (id: string, ref: string) => {
+    if (!window.confirm(`Are you sure you want to withdraw and delete complaint ${ref}?`)) return;
+    
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      toast.success("Complaint withdrawn successfully");
+      fetchComplaints();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
@@ -303,21 +319,34 @@ export default function CitizenDashboard() {
                                   <Badge className={getStatusColor(c.status)}>{c.status}</Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1 mb-2 line-clamp-1">{c.address}</p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground/70 uppercase">
-                                    <span>Ref: {c.reference_number}</span>
-                                    <span>•</span>
-                                    <span className="text-primary">{c.predicted_days} Days Est.</span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground/70 uppercase">
+                                      <span>Ref: {c.reference_number}</span>
+                                      <span>•</span>
+                                      <span className="text-primary">{c.predicted_days} Days Est.</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {c.status === 'New' && (
+                                        <Button 
+                                          size="sm" 
+                                          variant="ghost" 
+                                          onClick={(e) => { e.stopPropagation(); handleDelete(c._id || c.id, c.reference_number); }}
+                                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive transition-colors"
+                                          title="Withdraw Complaint"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        onClick={() => { setSelectedTrack(c); setTrackModalOpen(true); }}
+                                        className="h-7 text-[10px] font-black uppercase tracking-tighter hover:bg-primary/10 hover:text-primary transition-all px-2"
+                                      >
+                                        Track Status
+                                      </Button>
+                                    </div>
                                   </div>
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => { setSelectedTrack(c); setTrackModalOpen(true); }}
-                                    className="h-7 text-[10px] font-black uppercase tracking-tighter hover:bg-primary/10 hover:text-primary transition-all px-2"
-                                  >
-                                    Track Status
-                                  </Button>
-                                </div>
                               </div>
                             </div>
                           </Card>

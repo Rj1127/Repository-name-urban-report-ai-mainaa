@@ -7,7 +7,7 @@ import Notice from "../models/Notice.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const router = express.Router();
 
@@ -380,6 +380,28 @@ Do NOT wrap the response in markdown blocks like \`\`\`json. Return ONLY the raw
     } catch (err) {
         console.error("AI Analysis Error:", err);
         res.status(500).json({ error: "AI Analysis Failed: " + err.message });
+    }
+});
+
+// DELETE COMPLAINT (Citizen withdraws report)
+router.delete("/:id", async (req, res) => {
+    try {
+        const complaint = await Complaint.findById(req.params.id);
+        if (!complaint) return res.status(404).json({ error: "Complaint not found" });
+
+        // Security: only allow deletion if not yet processed
+        if (complaint.status !== 'New') {
+            return res.status(400).json({ error: "Cannot delete a complaint that is already being processed." });
+        }
+
+        await Complaint.findByIdAndDelete(req.params.id);
+        
+        // Also cleanup any associated assignments (though there shouldn't be any for 'New' status)
+        await Assignment.deleteMany({ complaint_id: req.params.id });
+
+        res.json({ message: "Complaint deleted successfully" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

@@ -12,8 +12,8 @@ export default function DashboardSidebar() {
   const getMenuItems = () => {
     if (user?.role === 'admin') {
       return [
-        { icon: Shield, label: 'Command Centre', color: 'text-primary', bg: 'bg-primary/10', action: () => navigate('/admin?tab=command-center') },
         { icon: LayoutDashboard, label: 'Admin Dashboard', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/admin?tab=dashboard') },
+        { icon: Shield, label: 'Command Centre', color: 'text-primary', bg: 'bg-primary/10', action: () => navigate('/admin?tab=command-center') },
         { icon: Users, label: 'Engineer Details', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', action: () => navigate('/admin?tab=engineers') },
         { icon: Activity, label: 'Flood Risk Predictor', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', action: () => navigate('/admin?tab=flood-risk') },
         { icon: Map, label: 'Live City Heatmap', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => navigate('/admin?tab=heatmap') },
