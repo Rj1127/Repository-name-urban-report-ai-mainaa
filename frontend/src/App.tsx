@@ -17,6 +17,7 @@ import ModifyApplication from "./pages/ModifyApplication";
 import NearestMunicipality from "./pages/NearestMunicipality";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -32,14 +33,23 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/dashboard" element={<CitizenDashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/resolver" element={<ResolverDashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/file-complaint" element={<FileComplaint />} />
-              <Route path="/applications/sent" element={<SentApplications />} />
-              <Route path="/applications/modify" element={<ModifyApplication />} />
-              <Route path="/municipality/nearest" element={<NearestMunicipality />} />
+              
+              {/* Citizen Routes */}
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['citizen', 'user']}><CitizenDashboard /></ProtectedRoute>} />
+              <Route path="/file-complaint" element={<ProtectedRoute allowedRoles={['citizen', 'user']}><FileComplaint /></ProtectedRoute>} />
+              <Route path="/applications/sent" element={<ProtectedRoute allowedRoles={['citizen', 'user']}><SentApplications /></ProtectedRoute>} />
+              <Route path="/applications/modify" element={<ProtectedRoute allowedRoles={['citizen', 'user']}><ModifyApplication /></ProtectedRoute>} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+              
+              {/* Resolver Routes */}
+              <Route path="/resolver" element={<ProtectedRoute allowedRoles={['resolver']}><ResolverDashboard /></ProtectedRoute>} />
+              
+              {/* Common Protected Routes */}
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/municipality/nearest" element={<ProtectedRoute><NearestMunicipality /></ProtectedRoute>} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

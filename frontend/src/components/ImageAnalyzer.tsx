@@ -11,6 +11,7 @@ interface Props {
     confidence: number;
     description: string;
     imageUrl: string;
+    imageBase64: string;
   }) => void;
 }
 
@@ -108,7 +109,7 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
 
       const imageUrl = URL.createObjectURL(file);
       setResult(data);
-      onAnalysisComplete({ ...data, imageUrl });
+      onAnalysisComplete({ ...data, imageUrl, imageBase64: preview });
       setAnalyzing(false);
 
     } catch (err: any) {

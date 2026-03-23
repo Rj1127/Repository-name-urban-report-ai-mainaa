@@ -13,6 +13,13 @@ const complaintSchema = new mongoose.Schema({
     status: { type: String, enum: ["New", "Forwarded", "Assigned", "In Progress", "Resolved", "Closed"], default: "New" },
     before_image: { type: String, default: null },
     after_image: { type: String, default: null },
+    resolution_analysis: {
+        is_resolved: { type: Boolean, default: false },
+        analysis_text: { type: String, default: "" },
+        confidence: { type: Number, default: 0 }
+    },
+    satisfaction_status: { type: String, enum: ["Pending", "Satisfied", "Dissatisfied"], default: "Pending" },
+    citizen_feedback: { type: String, default: "" },
     citizen_satisfied: { type: Boolean, default: null }
 }, { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } });
 

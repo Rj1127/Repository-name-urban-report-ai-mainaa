@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
         }
 
         const engineers = await User.find(filter)
-            .select("name email phone dept_name activity_status experience_level")
+            .select("name email phone dept_name activity_status experience_level gov_id area city state head_of_dept position area_expertise")
             .lean();
 
         // Count active tasks for each engineer

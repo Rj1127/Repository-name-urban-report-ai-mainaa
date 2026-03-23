@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 export default function ResolverDashboard() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Resolution Flow
@@ -20,20 +21,53 @@ export default function ResolverDashboard() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [afterImagePreview, setAfterImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+
+  // Notice Flow
+  const [noticeModalOpen, setNoticeModalOpen] = useState(false);
+  const [selectedNotice, setSelectedNotice] = useState<any>(null);
+  const [noticeResponse, setNoticeResponse] = useState('');
+  const [submittingNotice, setSubmittingNotice] = useState(false);
 
   useEffect(() => {
-    if (user) fetchTasks();
+    if (user) {
+      fetchTasks();
+      fetchNotices();
+    }
   }, [user]);
+
+  // Mandatory Alert Trigger
+  useEffect(() => {
+    const pendingNotice = notices.find(n => !n.responded);
+    if (pendingNotice && !noticeModalOpen) {
+      setSelectedNotice(pendingNotice);
+      setNoticeModalOpen(true);
+    }
+  }, [notices]);
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?engineer_id=${user?.id}`);
+      const userId = user?._id || user?.id;
+      if (!userId) return;
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?engineer_id=${userId}`);
       const data = await res.json();
       setTasks(data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNotices = async () => {
+    try {
+      const userId = user?._id || user?.id;
+      if (!userId) return;
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/${userId}`);
+      const data = await res.json();
+      setNotices(data);
+    } catch (err) {
+      console.error("Failed to fetch notices", err);
     }
   };
 
@@ -56,10 +90,9 @@ export default function ResolverDashboard() {
 
     setUploading(true);
     try {
-      // POST the after_image to the backend to trigger AI Validation
       const payload = {
         complaint_id: selectedTask.id,
-        engineer_id: user?.id,
+        engineer_id: user?._id || user?.id,
         after_image: afterImagePreview
       };
 
@@ -77,12 +110,35 @@ export default function ResolverDashboard() {
       fetchTasks();
     } catch (err: any) {
       toast.error(err.message, { duration: 5000 });
-      // Clear image if AI fake-validator caught it
       if (err.message.includes("AI Warning")) {
         setAfterImagePreview(null);
       }
     } finally {
       setUploading(false);
+    }
+  };
+
+  const submitNoticeResponse = async () => {
+    if (!noticeResponse.trim()) return toast.error("Please provide a reason/explanation");
+
+    setSubmittingNotice(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/${selectedNotice._id}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: noticeResponse })
+      });
+
+      if (!res.ok) throw new Error("Failed to submit response");
+
+      toast.success("Explanation submitted to Command Center.");
+      setNoticeModalOpen(false);
+      setNoticeResponse('');
+      fetchNotices();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSubmittingNotice(false);
     }
   };
 
@@ -93,15 +149,64 @@ export default function ResolverDashboard() {
       <div className="flex flex-1 overflow-hidden w-full max-w-[1400px] mx-auto">
         <DashboardSidebar />
         <main className="container max-w-5xl py-8 flex-1 overflow-y-auto hide-scrollbar">
-          <div className="mb-8 p-6 bg-secondary/20 border border-border/50 rounded-2xl flex items-center gap-4">
-            <div className="h-16 w-16 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-glow">
-              <Wrench className="h-8 w-8 text-primary-foreground" />
+          
+          {/* HEADER & NOTICES SUMMARY */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="lg:col-span-2 p-6 bg-secondary/20 border border-border/50 rounded-2xl flex items-center gap-4">
+              <div className="h-16 w-16 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-glow">
+                <Wrench className="h-8 w-8 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Engineer Field Terminal</h1>
+                <p className="text-muted-foreground mt-1 text-sm font-bold">Active deployments: {Array.isArray(tasks) ? tasks.filter(t => !['Resolved', 'Closed'].includes(t.status)).length : 0}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Engineer Field Terminal</h1>
-              <p className="text-muted-foreground mt-1 text-sm">Active deployments: {Array.isArray(tasks) ? tasks.filter(t => !['Resolved', 'Closed'].includes(t.status)).length : 0}</p>
+
+            {/* UNRESPONDED NOTICES COUNT */}
+            <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center justify-between">
+               <div>
+                  <h3 className="text-xs font-black uppercase text-destructive tracking-widest flex items-center gap-2">
+                     <ShieldAlert className="h-4 w-4" /> Disciplinary Notices
+                  </h3>
+                  <p className="text-2xl font-black mt-1">{notices.filter(n => !n.responded).length}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground">Require immediate response</p>
+               </div>
+               <ShieldAlert className={`h-10 w-10 text-destructive ${notices.filter(n => !n.responded).length > 0 ? 'animate-pulse' : 'opacity-20'}`} />
             </div>
           </div>
+
+          {/* ACTIVE NOTICES LIST (IF ANY) */}
+          <AnimatePresence>
+            {notices.filter(n => !n.responded).length > 0 && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 overflow-hidden">
+                <h2 className="text-sm font-black uppercase text-destructive mb-4 flex items-center gap-2">
+                   <AlertTriangle className="h-4 w-4" /> Pending Explanations
+                </h2>
+                <div className="space-y-3">
+                   {notices.filter(n => !n.responded).map(notice => (
+                     <Card key={notice._id} className="p-4 border-destructive/30 bg-destructive/5 flex items-center justify-between group hover:bg-destructive/10 transition-colors">
+                        <div className="flex items-center gap-4">
+                           <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center text-destructive">
+                              <MessageSquare className="h-5 w-5" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-black uppercase text-foreground">Conflict: {notice.complaint_id?.reference_number || 'Internal Ref'}</p>
+                              <p className="text-xs font-bold text-muted-foreground line-clamp-1">{notice.message}</p>
+                           </div>
+                        </div>
+                        <Button size="sm" variant="destructive" onClick={() => { setSelectedNotice(notice); setNoticeModalOpen(true); }} className="h-8 font-black uppercase text-[10px] tracking-widest px-4">
+                           Explain Conflict
+                        </Button>
+                     </Card>
+                   ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <h2 className="text-sm font-black uppercase text-muted-foreground mb-4 flex items-center gap-2">
+             <Info className="h-4 w-4" /> Operational Task List
+          </h2>
 
           {loading ? (
             <div className="text-center p-12 text-muted-foreground">Syncing Tasks...</div>
@@ -117,7 +222,7 @@ export default function ResolverDashboard() {
                 {tasks.map(task => {
                   const isCompleted = ['Resolved', 'Closed'].includes(task.status);
                   return (
-                    <motion.div key={task.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                    <motion.div key={task.id || task._id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                       <Card className={`glass-panel overflow-hidden border ${isCompleted ? 'opacity-70 border-success/30' : 'border-primary/20 hover:border-primary/50'} transition-all shadow-card h-full flex flex-col group`}>
 
                         <div className="relative h-48 w-full bg-secondary shrink-0 overflow-hidden">
@@ -126,36 +231,43 @@ export default function ResolverDashboard() {
                             <div className="flex h-full items-center justify-center"><AlertTriangle className="h-8 w-8 text-muted-foreground" /></div>
                           }
                           <div className="absolute top-3 right-3 flex gap-2">
-                            <Badge className={`${isCompleted ? 'bg-success text-white' : 'bg-orange-500 text-white animate-pulse shadow-glow'}`}>{task.status}</Badge>
+                            <Badge className={`${isCompleted ? 'bg-success text-white px-4 border-none shadow-glow text-[10px] font-black' : 'bg-orange-500 text-white animate-pulse shadow-glow text-[10px] font-black uppercase tracking-widest'}`}>{task.status}</Badge>
                           </div>
                         </div>
 
                         <div className="p-5 flex-1 flex flex-col">
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold text-foreground text-lg uppercase truncate">{task.issue_type?.replace('_', ' ')}</h3>
-                            <span className="text-xs font-bold tracking-wider text-muted-foreground">
-                              <Hash className="h-3 w-3 inline mr-0.5" />{task.reference_number}
+                            <span className="text-xs font-bold tracking-wider text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                              <Hash className="h-3 w-3 inline mr-0.5 text-primary" />{task.reference_number}
                             </span>
                           </div>
-                          <p className="text-sm text-foreground/80 line-clamp-2 flex-1">{task.description}</p>
+                          <p className="text-sm text-foreground/80 line-clamp-2 flex-1 font-medium">{task.description}</p>
 
                           <div className="mt-4 space-y-2 mb-6">
-                            <p className="text-xs text-muted-foreground flex items-center bg-secondary/50 p-2 rounded-md">
+                            <p className="text-xs text-muted-foreground flex items-center bg-secondary/50 p-2 rounded-lg font-bold border border-border/30">
                               <MapPin className="h-4 w-4 mr-2 text-primary" /> {task.address || `Coordinates: ${task.latitude}, ${task.longitude}`}
                             </p>
-                            <p className="text-xs text-muted-foreground flex items-center bg-secondary/50 p-2 rounded-md">
-                              <Clock className="h-4 w-4 mr-2 text-orange-500" /> Allocated Duration: {task.predicted_days} Days
-                            </p>
+                            <div className="bg-orange-500/5 border border-orange-500/20 p-3 rounded-xl shadow-inner">
+                               <div className="flex justify-between items-center mb-1">
+                                  <span className="text-[10px] font-black uppercase text-orange-600 tracking-tighter">Deadline Remnant</span>
+                                  <Clock className="h-3 w-3 text-orange-500" />
+                               </div>
+                               <CountdownTimer deadline={task.deadline} />
+                            </div>
                           </div>
 
-                          <div className="mt-auto">
+                          <div className="mt-auto flex flex-col gap-2">
+                             <Button variant="outline" onClick={() => { setSelectedTask(task); setViewModalOpen(true); }} className="w-full h-11 border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-black uppercase text-xs tracking-widest transition-all">
+                                Inspection Profile
+                             </Button>
                             {!isCompleted ? (
-                              <Button onClick={() => openResolveModal(task)} className="w-full gradient-primary hover:shadow-glow font-bold text-primary-foreground">
-                                Record Completion & Upload Proof
+                              <Button onClick={() => openResolveModal(task)} className="w-full h-11 gradient-primary hover:shadow-glow font-black uppercase text-sm tracking-widest text-primary-foreground transition-all">
+                                Record Work Completion
                               </Button>
                             ) : (
-                              <Button disabled className="w-full bg-success/20 text-success border border-success/30 font-bold opacity-100">
-                                <CheckCircle className="h-4 w-4 mr-2" /> Pending Citizen Approval
+                              <Button disabled className="w-full h-11 bg-success/20 text-success border border-success/30 font-black uppercase text-sm tracking-widest opacity-100 shadow-inner">
+                                <CheckCircle className="h-4 w-4 mr-2" /> Verification Pending
                               </Button>
                             )}
                           </div>
@@ -174,45 +286,209 @@ export default function ResolverDashboard() {
         <Dialog open={resolveModalOpen} onOpenChange={setResolveModalOpen}>
           <DialogContent className="sm:max-w-[450px] glass-strong border-primary/20 shadow-elevated">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                <Upload className="h-5 w-5 text-primary" /> Upload Proof of Work
+              <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase">
+                <Upload className="h-5 w-5 text-primary" /> Work Submission
               </DialogTitle>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                Smart Nagar Reporting portal(SNRP) automatically compares your After image with the Before image. Ensure the repair is clearly visible to prevent AI rejection.
+              <p className="text-xs font-bold text-muted-foreground mt-2 leading-relaxed">
+                Smart Nagar Reporting AI automatically verifies the state transition from Before to After. Ensure the site is clear.
               </p>
             </DialogHeader>
 
             <div className="my-4">
               {afterImagePreview ? (
-                <div className="relative rounded-xl overflow-hidden border border-border/50 group">
+                <div className="relative rounded-2xl overflow-hidden border border-border/50 group shadow-elevated">
                   <img src={afterImagePreview} alt="Resolution" className="w-full h-48 object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Button variant="secondary" size="sm" onClick={() => setAfterImagePreview(null)}>Retake</Button>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Button variant="secondary" className="font-black uppercase text-xs tracking-widest" onClick={() => setAfterImagePreview(null)}>Retake Capture</Button>
                   </div>
                 </div>
               ) : (
-                <label className="flex h-48 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/30 bg-secondary/20 transition-all hover:bg-primary/5 hover:border-primary">
+                <label className="flex h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-secondary/20 transition-all hover:bg-primary/5 hover:border-primary shadow-inner">
                   <Camera className="mb-2 h-10 w-10 text-primary opacity-80" />
-                  <span className="text-sm font-bold text-foreground">Tap to capture image</span>
+                  <span className="text-xs font-black text-foreground uppercase tracking-widest">Tap to Scan Resolution Site</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                 </label>
               )}
 
-              <div className="mt-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex gap-3 text-orange-500 text-xs">
+              <div className="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex gap-3 text-orange-500 text-[10px] font-bold">
                 <ShieldAlert className="h-5 w-5 shrink-0" />
-                <p><strong>Warning:</strong> The AI validator will block duplicate uploads of the Before image or identical scene states.</p>
+                <p>AI ADVISORY: System will cross-reference location telemetry and image delta. Do not attempt duplicate uploads.</p>
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setResolveModalOpen(false)}>Cancel</Button>
-              <Button onClick={submitResolution} disabled={uploading || !afterImagePreview} className="gradient-primary text-primary-foreground shadow-glow">
-                {uploading ? 'Validating AI...' : 'Submit Resolution Proof'}
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" className="font-bold uppercase text-xs" onClick={() => setResolveModalOpen(false)}>Abort</Button>
+              <Button onClick={submitResolution} disabled={uploading || !afterImagePreview} className="gradient-primary text-primary-foreground shadow-glow font-black uppercase tracking-widest flex-1">
+                {uploading ? 'Processing AI...' : 'Verify & Close Deployment'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* RESPOND NOTICE DIALOG - MANDATORY */}
+        <Dialog 
+          open={noticeModalOpen} 
+          onOpenChange={(open) => {
+            // Prevent closing if notice is not responded
+            if (!open && notices.some(n => !n.responded)) {
+              toast.error("Mandatory: You must provide a formal explanation for the resolution conflict before proceeding.");
+              return;
+            }
+            setNoticeModalOpen(open);
+          }}
+        >
+          <DialogContent className="sm:max-w-[500px] glass-strong border-destructive/20 shadow-elevated" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase text-destructive">
+                <ShieldAlert className="h-6 w-6" /> Mandatory Explanatory Statement
+              </DialogTitle>
+              <p className="text-xs font-bold text-muted-foreground mt-2 leading-relaxed uppercase tracking-tighter">
+                Formal explanation required for resolution conflict detected in Ref: {selectedNotice?.complaint_id?.reference_number}
+              </p>
+            </DialogHeader>
+
+            <div className="my-4 space-y-4">
+               <div className="p-4 bg-destructive/5 rounded-xl border border-destructive/10 text-destructive text-sm font-bold flex items-start gap-3 italic">
+                  <MessageSquare className="h-5 w-5 shrink-0" />
+                  "{selectedNotice?.message}"
+               </div>
+
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Response Narrative</label>
+                  <textarea 
+                     value={noticeResponse}
+                     onChange={(e) => setNoticeResponse(e.target.value)}
+                     placeholder="Provide detailed reasoning for resolution conflict (e.g., site re-dumping, secondary failure, structural latency)..."
+                     className="w-full h-32 bg-secondary/30 border border-border/50 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-destructive focus:outline-none transition-all"
+                  />
+               </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button onClick={submitNoticeResponse} disabled={submittingNotice || !noticeResponse} className="bg-destructive text-white hover:opacity-90 shadow-glow-destructive font-black uppercase tracking-widest flex-1">
+                {submittingNotice ? 'Transmitting...' : 'Transmit Statement'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* TASK DETAIL DIALOG */}
+        <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+          <DialogContent className="sm:max-w-[600px] glass-strong border-primary/20 shadow-elevated max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase tracking-tight">
+                 <ShieldAlert className="h-6 w-6 text-primary" /> Inspection Profile
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedTask && (
+              <div className="space-y-6 py-4">
+                 <div className="rounded-2xl overflow-hidden border border-border/50 bg-secondary aspect-video relative group shadow-elevated">
+                    {selectedTask.before_image ? 
+                      <img src={selectedTask.before_image} alt="Issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" /> :
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground italic">Telemetry Evidence Offline</div>
+                    }
+                    <div className="absolute top-4 right-4 focus:outline-none">
+                       <Badge className="bg-orange-500 text-white shadow-glow font-black border-none uppercase tracking-widest text-[10px]">{selectedTask.status}</Badge>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-6">
+                    <div>
+                       <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Protocol Reference</h4>
+                       <p className="font-mono text-sm font-black text-primary bg-primary/5 px-2 py-1 rounded inline-block">{selectedTask.reference_number}</p>
+                    </div>
+                    <div>
+                       <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Anomaly Category</h4>
+                       <p className="text-sm font-black uppercase text-foreground/90">{selectedTask.issue_type?.replace('_', ' ')}</p>
+                    </div>
+                 </div>
+
+                 <div className="p-5 bg-secondary/30 rounded-2xl border border-border/30 backdrop-blur-sm">
+                    <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-2 flex items-center gap-2">
+                       <Info className="h-3 w-3" /> Strategic Objective
+                    </h4>
+                    <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                       {selectedTask.description || "Field operative is directed to inspect regional infrastructure anomaly. Prioritize safety and document state delta."}
+                    </p>
+                 </div>
+
+                 <div className="flex items-center gap-4 p-4 border border-border/20 rounded-2xl">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                       <MapPin className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                       <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Deployment Geocode</h4>
+                       <p className="text-sm font-bold text-foreground/80">{selectedTask.address || "Localized Sector Perimeter"}</p>
+                    </div>
+                 </div>
+
+                 <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20 flex justify-between items-center shadow-inner">
+                    <div className="flex items-center gap-3">
+                       <div className="h-10 w-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-600">
+                          <Clock className="h-6 w-6" />
+                       </div>
+                       <div>
+                          <h4 className="text-[10px] font-black uppercase text-orange-600 mb-0.5 tracking-tighter">Deadline Synchronization</h4>
+                          <p className="text-[10px] font-bold text-orange-500/80">
+                             INIT: {new Date(selectedTask.assigned_at).toLocaleString()}
+                          </p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <CountdownTimer deadline={selectedTask.deadline} />
+                    </div>
+                 </div>
+
+                 <Button onClick={() => setViewModalOpen(false)} className="w-full h-12 bg-secondary hover:bg-secondary/80 font-black uppercase tracking-widest text-xs transition-all">
+                    Return to Operational Grid
+                 </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
+    </div>
+  );
+}
+
+// MODULAR COUNTDOWN COMPONENT
+function CountdownTimer({ deadline }: { deadline: string }) {
+  const [timeLeft, setTimeLeft] = useState<string>('00:00:00');
+
+  useEffect(() => {
+    if (!deadline) return;
+    
+    const calculateTime = () => {
+      const now = new Date().getTime();
+      const target = new Date(deadline).getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft('EXPIRED');
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      let str = "";
+      if (days > 0) str += `${days}d `;
+      str += `${hours.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
+      setTimeLeft(str);
+    };
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 1000);
+    return () => clearInterval(timer);
+  }, [deadline]);
+
+  return (
+    <div className={`px-4 py-1.5 rounded-lg border font-mono font-black text-sm flex items-center gap-2 ${timeLeft === 'EXPIRED' ? 'bg-destructive/20 text-destructive border-destructive/30' : 'bg-background/50 text-foreground border-border/50 shadow-sm'}`}>
+      <div className={`h-2 w-2 rounded-full ${timeLeft === 'EXPIRED' ? 'bg-destructive' : 'bg-orange-500 animate-pulse'}`} />
+      {timeLeft}
     </div>
   );
 }

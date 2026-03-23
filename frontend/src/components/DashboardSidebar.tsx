@@ -61,7 +61,7 @@ export default function DashboardSidebar() {
         <div className="pt-4 border-t border-border/50 mt-auto">
           <Button
             variant="ghost"
-            onClick={logout}
+            onClick={() => { logout(); navigate('/'); }}
             className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive h-11 font-bold"
           >
             <LogOut className="mr-3 h-5 w-5" />

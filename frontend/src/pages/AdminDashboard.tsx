@@ -32,6 +32,21 @@ export default function AdminDashboard() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
   const [filteredEngineers, setFilteredEngineers] = useState<any[]>([]);
+  const [providedTime, setProvidedTime] = useState<number>(24);
+
+  // Detail Modals
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [viewingComplaint, setViewingComplaint] = useState<any>(null);
+  const [engineerModalOpen, setEngineerModalOpen] = useState(false);
+  const [viewingEngineer, setViewingEngineer] = useState<any>(null);
+  
+  // Notice Modal
+  const [noticeModalOpen, setNoticeModalOpen] = useState(false);
+  const [noticeMessage, setNoticeMessage] = useState("Show-cause: The resolution provided is unsatisfactory. Provide a valid reason within 24h.");
+  
+  // Sorting & Filtering
+  const [sortBy, setSortBy] = useState<'created_at' | 'predicted_days' | 'severity'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchData();
@@ -58,14 +73,45 @@ export default function AdminDashboard() {
 
   const handleOpenAssign = (complaint: any) => {
     setSelectedComplaint(complaint);
-    let suggestedDept = "Roads & Highways";
-    if (['waterlogging', 'leak'].includes(complaint.issue_type)) suggestedDept = "Water & Sanitation";
-    if (['broken_streetlight', 'wires'].includes(complaint.issue_type)) suggestedDept = "Electricity board";
+    
+    // AI RECOMMENDER LOGIC (Advanced Department & Expertise Match)
+    const suggested = engineers.map(eng => {
+      let score = 0;
+      
+      // 1. Strategic Department Alignment
+      let primaryDept = "Roads & Civil Works";
+      if (['waterlogging', 'leak', 'drainage'].includes(complaint.issue_type)) primaryDept = "Water & Sanitation";
+      if (['broken_streetlight', 'wires', 'electricity'].includes(complaint.issue_type)) primaryDept = "Electricity Board";
+      if (['garbage', 'waste', 'dumping'].includes(complaint.issue_type)) primaryDept = "Sanitation & Waste";
+      if (['pothole', 'structural_damage'].includes(complaint.issue_type)) primaryDept = "Roads & Highways";
 
-    const suggested = engineers.filter(e => e.dept_name === suggestedDept || !e.dept_name)
-      .sort((a, b) => a.active_tasks - b.active_tasks);
+      if (eng.dept_name === primaryDept) score += 5;
 
-    setFilteredEngineers(suggested.length > 0 ? suggested : engineers);
+      // 2. Specialty Keyword Match (Area of Expertise)
+      const expertiseArr = (eng.area_expertise || "").toLowerCase().split(',').map((s: string) => s.trim());
+      const issueTypeStr = (complaint.issue_type || "").toLowerCase();
+      
+      if (expertiseArr.some((ex: string) => ex.includes(issueTypeStr) || issueTypeStr.includes(ex))) {
+        score += 15; // Higher weight for direct expertise
+      }
+      
+      // 3. Experience & Seniority Tiering
+      if (eng.experience_level === 'Expert') score += 5;
+      if (eng.experience_level === 'Senior') score += 3;
+
+      // 4. Operational Bandwidth Penalty
+      score -= (eng.active_tasks || 0) * 3; // Heavily penalize busy engineers
+      
+      // 5. Availability Bonus
+      if (eng.activity_status === 'Available') score += 5;
+      
+      return { ...eng, matchScore: score };
+    }).sort((a, b) => b.matchScore - a.matchScore);
+
+    setFilteredEngineers(suggested);
+    
+    const defaultHours = ((complaint.predicted_days || 1) + 1) * 24;
+    setProvidedTime(defaultHours);
     setAssignModalOpen(true);
   };
 
@@ -74,12 +120,38 @@ export default function AdminDashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ complaint_id: selectedComplaint.id || selectedComplaint._id, engineer_id: engineerId })
+        body: JSON.stringify({ 
+          complaint_id: selectedComplaint.id || selectedComplaint._id, 
+          engineer_id: engineerId,
+          provided_time: providedTime
+        })
       });
       if (!res.ok) throw new Error("Assignment failed");
       toast.success("Engineer Assigned Successfully");
       setAssignModalOpen(false);
       fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleSendNotice = async () => {
+    try {
+      const assignment = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/find?complaint_id=${selectedComplaint._id || selectedComplaint.id}`).then(res => res.json());
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          complaint_id: selectedComplaint._id || selectedComplaint.id,
+          engineer_id: selectedComplaint.engineer_id || assignment.engineer_id,
+          admin_id: "65f1a2b3c4d5e6f7a8b9c0d1", // Hardcoded Admin ID for now or get from auth
+          message: noticeMessage
+        })
+      });
+      if (!res.ok) throw new Error("Failed to send notice");
+      toast.success("Notice Issued to Engineer");
+      setNoticeModalOpen(false);
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -112,6 +184,28 @@ export default function AdminDashboard() {
     }
   };
 
+  const sortedComplaints = [...complaints].sort((a, b) => {
+    // Top Priority: Dissatisfied Citizens
+    if (a.satisfaction_status === 'Dissatisfied' && b.satisfaction_status !== 'Dissatisfied') return -1;
+    if (a.satisfaction_status !== 'Dissatisfied' && b.satisfaction_status === 'Dissatisfied') return 1;
+
+    let valA = a[sortBy];
+    let valB = b[sortBy];
+
+    // Severity weighing for sorting
+    if (sortBy === 'severity') {
+      const weights: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
+      valA = weights[a.severity] || 0;
+      valB = weights[b.severity] || 0;
+    }
+
+    if (sortOrder === 'asc') {
+      return valA > valB ? 1 : -1;
+    } else {
+      return valA < valB ? 1 : -1;
+    }
+  });
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -136,13 +230,32 @@ export default function AdminDashboard() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input placeholder="Search by Reference # or Type..." className="pl-10 h-12 bg-secondary/30 border-border/50" />
                   </div>
+                  <div className="flex gap-2">
+                    <select 
+                      value={sortBy} 
+                      onChange={(e: any) => setSortBy(e.target.value as any)}
+                      className="bg-secondary/30 border border-border/50 rounded-md px-3 text-sm h-12 focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="created_at">Report Date</option>
+                      <option value="predicted_days">AI Predicted Time</option>
+                      <option value="severity">Severity Level</option>
+                    </select>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-12 w-12 border-border/50"
+                      onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    >
+                      <TrendingUp className={`h-4 w-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
 
                 {loading ? (
                   <div className="flex items-center justify-center p-12"><Activity className="animate-spin text-primary" /></div>
                 ) : (
                   <div className="space-y-4">
-                    {Array.isArray(complaints) && complaints.map(c => (
+                    {sortedComplaints.map(c => (
                       <Card key={c.id || c._id} className="glass-panel hover:border-primary/50 transition-colors p-5 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-3 flex gap-2">
                           <span className={`px-2.5 py-1 text-xs font-bold rounded-full border border-transparent ${getStatusColor(c.status)}`}>
@@ -169,22 +282,40 @@ export default function AdminDashboard() {
                             <p className="text-sm text-muted-foreground line-clamp-1 mb-2">Reported by: <span className="font-semibold">{c.citizen_name || 'Anonymous'}</span></p>
 
                             <div className="flex flex-wrap items-center gap-4 text-xs font-medium mt-3">
-                              <span className="flex items-center text-primary bg-primary/10 px-2 py-1 rounded-md">
-                                <MapPin className="h-3.5 w-3.5 mr-1" /> {c.address || `Lat: ${c.latitude?.toFixed(4)}, Lng: ${c.longitude?.toFixed(4)}`}
-                              </span>
                               <span className="flex items-center text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md">
                                 <Clock className="h-3.5 w-3.5 mr-1" /> AI ETA: {c.predicted_days} Days
                               </span>
+                              {c.status !== "New" && c.assigned_engineer_name && (
+                                <span className="flex items-center text-purple-500 bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20">
+                                  <Users className="h-3.5 w-3.5 mr-1" /> Assigned: {c.assigned_engineer_name} ({c.assigned_engineer_dept || 'Resolver'})
+                                </span>
+                              )}
                               <span className="flex items-center text-muted-foreground">
                                 {new Date(c.created_at).toLocaleString()}
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-end shrink-0 md:justify-start mt-4 md:mt-0">
-                            {c.status === 'New' && (
-                              <Button onClick={() => handleOpenAssign(c)} className="gradient-primary text-primary-foreground font-bold shadow-glow hover:scale-105 transition-transform">
-                                Assign Engineer
+                            <div className="flex flex-col items-center justify-end shrink-0 md:justify-start mt-4 md:mt-0 gap-2">
+                            <Button variant="outline" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full md:w-auto border-primary/30 hover:bg-primary/10 font-bold">
+                              View Details
+                            </Button>
+                            {c.status === "New" && (
+                              <Button onClick={() => handleOpenAssign(c)} className="w-full md:w-auto gradient-primary text-primary-foreground font-bold shadow-glow">
+                                AI Suggest Engineer
+                              </Button>
+                            )}
+                            {c.satisfaction_status === "Dissatisfied" && (
+                              <Button 
+                                variant="destructive" 
+                                onClick={() => { 
+                                  setSelectedComplaint(c); 
+                                  setNoticeMessage(`Disciplinary Notice: A citizen has reported dissatisfaction with your resolution for Ref: ${c.reference_number}. AI Analysis: ${c.resolution_analysis?.analysis || 'Conflict detected'}. Please provide a formal explanation immediately.`);
+                                  setNoticeModalOpen(true); 
+                                }} 
+                                className="w-full md:w-auto font-black shadow-glow animate-pulse"
+                              >
+                                <AlertOctagon className="mr-2 h-4 w-4" /> Issue One-Click Notice
                               </Button>
                             )}
                           </div>
@@ -274,9 +405,9 @@ export default function AdminDashboard() {
                     <Card key={eng.id || eng._id} className="glass-panel hover:border-purple-500/50 transition-colors p-6 overflow-hidden relative">
                        <div className={`absolute top-0 right-0 w-2 h-full ${getEngineerStatusColor(eng.activity_status)}`} />
                        <div className="flex justify-between items-start mb-4">
-                         <div>
-                            <h3 className="text-xl font-bold text-foreground">{eng.name}</h3>
-                            <p className="text-sm text-muted-foreground">{eng.dept_name || 'General Resolver'}</p>
+                         <div className="flex-1">
+                           <h4 className="text-xl font-bold text-foreground">{eng.name}</h4>
+                           <p className="text-sm text-muted-foreground">{eng.dept_name || 'General Resolver'}</p>
                          </div>
                          <Badge className={getEngineerStatusColor(eng.activity_status)}>{eng.activity_status}</Badge>
                        </div>
@@ -299,7 +430,7 @@ export default function AdminDashboard() {
                              </div>
                           </div>
                        </div>
-                       <Button className="w-full mt-6 bg-secondary text-foreground hover:bg-secondary/80 font-bold">View History</Button>
+                        <Button onClick={() => { setViewingEngineer(eng); setEngineerModalOpen(true); }} className="w-full mt-6 bg-secondary text-foreground hover:bg-secondary/80 font-bold">View Full Profile</Button>
                     </Card>
                   ))}
                 </div>
@@ -426,6 +557,25 @@ export default function AdminDashboard() {
               AI suggests engineers based on department match and workload capacity.
             </p>
           </DialogHeader>
+          <div className="mt-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-orange-500 mb-2">Set Resolution Deadline</h4>
+            <div className="flex items-center gap-4">
+               <div className="flex-1">
+                  <Input 
+                    type="number" 
+                    value={providedTime} 
+                    onChange={(e) => setProvidedTime(parseInt(e.target.value) || 1)}
+                    className="h-10 bg-background border-border"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+                    Total hours allocated for resolution (Includes 1 Day SNRP Buffer)
+                  </p>
+               </div>
+               <div className="px-4 py-2 bg-secondary rounded-lg text-xs font-bold whitespace-nowrap">
+                  ≈ {(providedTime / 24).toFixed(1)} Days
+               </div>
+            </div>
+          </div>
 
           <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 mt-4 custom-scrollbar">
             {!Array.isArray(filteredEngineers) || filteredEngineers.length === 0 ? (
@@ -461,6 +611,200 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* COMPLAINT DETAIL DIALOG */}
+      <Dialog open={complaintModalOpen} onOpenChange={setComplaintModalOpen}>
+        <DialogContent className="sm:max-w-[700px] glass-strong border-primary/20 shadow-elevated max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase tracking-tight">
+              <FileText className="h-6 w-6 text-primary" /> Complaint Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingComplaint && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="rounded-xl overflow-hidden border border-border/50 bg-secondary/20 aspect-video">
+                    {viewingComplaint.before_image ? (
+                      <img src={viewingComplaint.before_image} alt="Issue" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                        <AlertTriangle className="h-12 w-12 mb-2" />
+                        <p className="font-bold">No Image Provided</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Badge className={getStatusColor(viewingComplaint.status)}>{viewingComplaint.status}</Badge>
+                    <div className="flex gap-2">
+                       {getSeverityBadge(viewingComplaint.severity)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Issue Type</h4>
+                    <p className="text-lg font-bold text-foreground capitalize">{viewingComplaint.issue_type?.replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Reference Number</h4>
+                    <p className="text-sm font-mono font-bold text-primary">{viewingComplaint.reference_number}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Reported By</h4>
+                    <p className="text-sm font-bold text-foreground">{viewingComplaint.citizen_name || 'Anonymous'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Reported At</h4>
+                    <p className="text-sm text-foreground">{new Date(viewingComplaint.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-border/30">
+                <div>
+                  <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Location Address</h4>
+                  <p className="text-sm text-foreground flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    {viewingComplaint.address || 'Manual Location Set'}
+                  </p>
+                  {(viewingComplaint.latitude && viewingComplaint.longitude) && (
+                    <p className="text-[10px] text-muted-foreground font-bold mt-1 ml-6">
+                      GPS: {viewingComplaint.latitude.toFixed(6)}, {viewingComplaint.longitude.toFixed(6)}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Description</h4>
+                  <p className="text-sm text-foreground leading-relaxed bg-secondary/20 p-4 rounded-xl border border-border/30">
+                    {viewingComplaint.description || "No additional description provided."}
+                  </p>
+                </div>
+              </div>
+
+              {viewingComplaint.status === 'New' && (
+                <div className="pt-4 border-t border-border/30">
+                   <Button onClick={() => { setComplaintModalOpen(false); handleOpenAssign(viewingComplaint); }} className="w-full h-12 gradient-primary text-primary-foreground font-bold shadow-glow">
+                      Proceed to Engineer Assignment
+                   </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ENGINEER DETAIL DIALOG */}
+      <Dialog open={engineerModalOpen} onOpenChange={setEngineerModalOpen}>
+        <DialogContent className="sm:max-w-[500px] glass-strong border-purple-500/20 shadow-elevated">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-2 uppercase tracking-tight">
+              <Users className="h-6 w-6 text-purple-500" /> Engineer Profile
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingEngineer && (
+            <div className="space-y-6 py-4">
+               <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                     <Users className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <div>
+                     <h3 className="text-xl font-bold text-foreground">{viewingEngineer.name}</h3>
+                     <p className="text-sm text-muted-foreground font-bold uppercase tracking-wider">{viewingEngineer.dept_name || 'N/A'}</p>
+                     <Badge className={`mt-2 ${getEngineerStatusColor(viewingEngineer.activity_status)}`}>
+                        {viewingEngineer.activity_status}
+                     </Badge>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/30">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Email Address</h4>
+                    <p className="text-sm font-bold text-foreground truncate">{viewingEngineer.email}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Phone Number</h4>
+                    <p className="text-sm font-bold text-foreground">{viewingEngineer.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Experience</h4>
+                    <p className="text-sm font-bold text-foreground">{viewingEngineer.experience_level || 'Senior'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Government ID</h4>
+                    <p className="text-sm font-mono font-bold text-primary">{viewingEngineer.gov_id || 'VERIFIED'}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-3 pt-4 border-t border-border/30">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Expertise & Skills</h4>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                        {viewingEngineer.area_expertise?.split(',').map((ex: string) => (
+                          <Badge key={ex} variant="secondary" className="bg-secondary/50 font-bold">{ex.trim()}</Badge>
+                        )) || <Badge variant="secondary">Civic Management</Badge>}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-1">Service Area</h4>
+                    <p className="text-sm text-foreground flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-purple-500" />
+                      {viewingEngineer.city ? `${viewingEngineer.area || ''}, ${viewingEngineer.city}, ${viewingEngineer.state || ''}` : 'Regional Head Office'}
+                    </p>
+                  </div>
+                  <div className="bg-purple-500/5 p-4 rounded-xl border border-purple-500/10">
+                     <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold uppercase text-muted-foreground">Workload Status</span>
+                        <span className="text-sm font-black text-purple-500">{viewingEngineer.active_tasks} Active Tasks</span>
+                     </div>
+                  </div>
+               </div>
+
+               <Button onClick={() => setEngineerModalOpen(false)} className="w-full bg-secondary text-foreground hover:bg-secondary/80 font-bold">
+                  Close Profile
+               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ISSUE NOTICE DIALOG */}
+      <Dialog open={noticeModalOpen} onOpenChange={setNoticeModalOpen}>
+        <DialogContent className="sm:max-w-[450px] glass-strong border-destructive/20 shadow-elevated">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-destructive">
+              <AlertOctagon className="h-5 w-5" /> Issue Disciplinary Notice
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+             <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Notice Message</h4>
+                <textarea 
+                  value={noticeMessage}
+                  onChange={(e) => setNoticeMessage(e.target.value)}
+                  className="w-full h-32 bg-secondary/30 border border-destructive/20 rounded-xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-destructive"
+                />
+             </div>
+             <div className="p-4 bg-destructive/10 rounded-xl border border-destructive/20">
+                <p className="text-xs text-destructive font-bold">
+                  This notice will be pinned to the engineer's terminal and requires a mandatory response.
+                </p>
+             </div>
+          </div>
+
+          <DialogFooter>
+             <Button variant="ghost" onClick={() => setNoticeModalOpen(false)}>Cancel</Button>
+             <Button onClick={handleSendNotice} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-glow-destructive">
+                Confirm & Send Notice
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

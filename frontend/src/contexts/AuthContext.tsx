@@ -25,11 +25,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = sessionStorage.getItem("user");
       if (!stored || stored === "undefined") return null;
       return JSON.parse(stored);
     } catch (err) {
-      console.error("Failed to parse user from local storage", err);
+      console.error("Failed to parse user from session storage", err);
       return null;
     }
   });
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setUser(data);
-    localStorage.setItem("user", JSON.stringify(data));
+    sessionStorage.setItem("user", JSON.stringify(data));
 
     setLoading(false);
     return data;
@@ -97,13 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 🚪 LOGOUT
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
     toast.success("Successfully logged out");
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    sessionStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
   return (
