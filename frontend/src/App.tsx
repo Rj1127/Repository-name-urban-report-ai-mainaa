@@ -15,6 +15,8 @@ import FileComplaint from "./pages/FileComplaint";
 import SentApplications from "./pages/SentApplications";
 import ModifyApplication from "./pages/ModifyApplication";
 import NearestMunicipality from "./pages/NearestMunicipality";
+import ApplyLeave from "./pages/ApplyLeave";
+import LeaveStatus from "./pages/LeaveStatus";
 import NotFound from "./pages/NotFound";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -45,6 +47,8 @@ const App = () => (
               
               {/* Resolver Routes */}
               <Route path="/resolver" element={<ProtectedRoute allowedRoles={['resolver']}><ResolverDashboard /></ProtectedRoute>} />
+              <Route path="/leave/apply" element={<ProtectedRoute allowedRoles={['resolver']}><ApplyLeave /></ProtectedRoute>} />
+              <Route path="/leave/status" element={<ProtectedRoute allowedRoles={['resolver']}><LeaveStatus /></ProtectedRoute>} />
               
               {/* Common Protected Routes */}
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

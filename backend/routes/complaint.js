@@ -5,6 +5,7 @@ import Assignment from "../models/Assignment.js";
 import Notification from "../models/Notification.js";
 import Notice from "../models/Notice.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAcknowledgementSlip } from "../utils/documentGenerator.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -54,11 +55,16 @@ router.post("/", async (req, res) => {
             status: "New"
         });
 
+        // Generate Acknowledgement Slip
+        const slipData = await generateAcknowledgementSlip(complaint, user);
+
         res.json({
             message: "Complaint submitted",
             ref: refNum,
             severity: ai.severity,
-            predicted_days: ai.predicted_days
+            predicted_days: ai.predicted_days,
+            slipPdf: slipData.pdf,
+            slipJpg: slipData.jpg
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

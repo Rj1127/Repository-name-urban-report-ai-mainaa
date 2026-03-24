@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText, Trash2 } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText, Trash2, Calendar, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { LeaveRequestsList } from '@/components/admin/LeaveRequestsList';
 
 export default function AdminDashboard() {
   const [searchParams] = useSearchParams();
@@ -39,17 +40,16 @@ export default function AdminDashboard() {
   const [viewingComplaint, setViewingComplaint] = useState<any>(null);
   const [engineerModalOpen, setEngineerModalOpen] = useState(false);
   const [viewingEngineer, setViewingEngineer] = useState<any>(null);
-  
+
   // Notice Modal
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
-  const [noticeMessage, setNoticeMessage] = useState("Show-cause: The resolution provided is unsatisfactory. Provide a valid reason within 24h.");
-  
-  // Search state
-  const [searchTerm, setSearchTerm] = useState("");
-  
+  const [noticeMessage, setNoticeMessage] = useState("");
+
   // Sorting & Filtering
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<'created_at' | 'predicted_days' | 'severity'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
 
   useEffect(() => {
     fetchData();
@@ -69,6 +69,7 @@ export default function AdminDashboard() {
       setEngineers(engData);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to synchronize with Command Centre");
     } finally {
       setLoading(false);
     }
@@ -76,61 +77,29 @@ export default function AdminDashboard() {
 
   const handleOpenAssign = (complaint: any) => {
     setSelectedComplaint(complaint);
-    
-    // AI RECOMMENDER LOGIC (Advanced Department & Expertise Match)
-    const suggested = engineers.map(eng => {
-      let score = 0;
-      
-      // 1. Strategic Department Alignment
-      let primaryDept = "Roads & Civil Works";
-      if (['waterlogging', 'leak', 'drainage'].includes(complaint.issue_type)) primaryDept = "Water & Sanitation";
-      if (['broken_streetlight', 'wires', 'electricity'].includes(complaint.issue_type)) primaryDept = "Electricity Board";
-      if (['garbage', 'waste', 'dumping'].includes(complaint.issue_type)) primaryDept = "Sanitation & Waste";
-      if (['pothole', 'structural_damage'].includes(complaint.issue_type)) primaryDept = "Roads & Highways";
-
-      if (eng.dept_name === primaryDept) score += 5;
-
-      // 2. Specialty Keyword Match (Area of Expertise)
-      const expertiseArr = (eng.area_expertise || "").toLowerCase().split(',').map((s: string) => s.trim());
-      const issueTypeStr = (complaint.issue_type || "").toLowerCase();
-      
-      if (expertiseArr.some((ex: string) => ex.includes(issueTypeStr) || issueTypeStr.includes(ex))) {
-        score += 15; // Higher weight for direct expertise
-      }
-      
-      // 3. Experience & Seniority Tiering
-      if (eng.experience_level === 'Expert') score += 5;
-      if (eng.experience_level === 'Senior') score += 3;
-
-      // 4. Operational Bandwidth Penalty
-      score -= (eng.active_tasks || 0) * 3; // Heavily penalize busy engineers
-      
-      // 5. Availability Bonus
-      if (eng.activity_status === 'Available') score += 5;
-      
-      return { ...eng, matchScore: score };
-    }).sort((a, b) => b.matchScore - a.matchScore);
-
-    setFilteredEngineers(suggested);
-    
-    const defaultHours = ((complaint.predicted_days || 1) + 1) * 24;
-    setProvidedTime(defaultHours);
+    const suitable = engineers.filter(eng => 
+      eng.dept_name === complaint.issue_type?.replace('_', ' ') || 
+      eng.area_expertise?.toLowerCase().includes(complaint.issue_type?.toLowerCase() || '')
+    );
+    setFilteredEngineers(suitable.length > 0 ? suitable : engineers);
     setAssignModalOpen(true);
   };
 
-  const handleAssign = async (engineerId: number) => {
+  const handleAssign = async (engineerId: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/complaints/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          complaint_id: selectedComplaint.id || selectedComplaint._id, 
-          engineer_id: engineerId,
-          provided_time: providedTime
+            complaint_id: selectedComplaint.id || selectedComplaint._id,
+            engineer_id: engineerId, 
+            provided_time: providedTime 
         })
       });
-      if (!res.ok) throw new Error("Assignment failed");
-      toast.success("Engineer Assigned Successfully");
+
+      if (!response.ok) throw new Error("Dispatch protocol failed");
+      
+      toast.success("Engineer dispatched successfully");
       setAssignModalOpen(false);
       fetchData();
     } catch (err: any) {
@@ -138,98 +107,77 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSendNotice = async () => {
-    try {
-      const assignment = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/find?complaint_id=${selectedComplaint._id || selectedComplaint.id}`).then(res => res.json());
-      
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notice`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          complaint_id: selectedComplaint._id || selectedComplaint.id,
-          engineer_id: selectedComplaint.engineer_id || assignment.engineer_id,
-          admin_id: "65f1a2b3c4d5e6f7a8b9c0d1", // Hardcoded Admin ID for now or get from auth
-          message: noticeMessage
-        })
-      });
-      if (!res.ok) throw new Error("Failed to send notice");
-      toast.success("Notice Issued to Engineer");
-      setNoticeModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
   const handleDeleteEngineer = async (id: string, name: string) => {
-    if (!window.confirm(`PERMANENT ACTION: Are you sure you want to remove engineer ${name} from the system? This cannot be undone.`)) return;
+    if (!window.confirm(`Are you sure you want to remove engineer ${name}? This action cannot be undone.`)) return;
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Deletion failed");
-      toast.success("Engineer record removed successfully");
-      setEngineerModalOpen(false);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Failed to remove engineer");
+      toast.success("Engineer record deleted");
       fetchData();
     } catch (err: any) {
       toast.error(err.message);
     }
   };
 
-  const getSeverityBadge = (sev: string) => {
-    if (sev === 'High') return <Badge variant="destructive" className="animate-pulse shadow-glow">HIGH</Badge>;
-    if (sev === 'Medium') return <Badge className="bg-orange-500 hover:bg-orange-500">MEDIUM</Badge>;
-    return <Badge className="bg-green-500 hover:bg-green-500 text-white">LOW</Badge>;
+  const handleSendNotice = async () => {
+    if (!noticeMessage.trim()) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            engineer_id: selectedComplaint.engineer_id || selectedComplaint.assigned_engineer, // Backend expects engineer_id
+            admin_id: JSON.parse(localStorage.getItem('user') || '{}')._id, // Add admin_id
+            complaint_id: selectedComplaint.id || selectedComplaint._id,
+            message: noticeMessage 
+        })
+      });
+      if (!res.ok) throw new Error("Failed to issue notice");
+      toast.success("Disciplinary notice issued");
+      setNoticeModalOpen(false);
+      setNoticeMessage("");
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'New': return 'bg-blue-500/10 text-blue-500';
-      case 'Forwarded': return 'bg-yellow-500/10 text-yellow-500';
-      case 'Assigned': return 'bg-purple-500/10 text-purple-500';
-      case 'In Progress': return 'bg-orange-500/10 text-orange-500';
-      case 'Resolved': return 'bg-green-500/10 text-green-500 border border-green-500';
-      case 'Closed': return 'bg-secondary text-muted-foreground';
-      default: return 'bg-secondary text-foreground';
+      case 'New': return 'bg-blue-500 text-white';
+      case 'In Progress': return 'bg-orange-500 text-white';
+      case 'Resolved': return 'bg-emerald-500 text-white';
+      case 'Closed': return 'bg-gray-500 text-white';
+      default: return 'bg-primary text-white';
+    }
+  };
+
+  const getSeverityBadge = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'high': return <Badge className="bg-red-500 text-white border-none animate-pulse">CRITICAL</Badge>;
+      case 'medium': return <Badge className="bg-orange-500 text-white border-none">MODERATE</Badge>;
+      default: return <Badge className="bg-blue-500 text-white border-none">LOW</Badge>;
     }
   };
 
   const getEngineerStatusColor = (status: string) => {
     switch (status) {
-      case 'Available': return 'bg-emerald-500 text-white';
-      case 'Busy': return 'bg-orange-500 text-white';
-      case 'On Leave': return 'bg-destructive text-white';
-      default: return 'bg-secondary text-muted-foreground';
+      case 'Available': return 'bg-emerald-500 text-white border-none';
+      case 'Busy': return 'bg-orange-500 text-white border-none';
+      case 'On Leave': return 'bg-rose-500 text-white border-none';
+      default: return 'bg-gray-500 text-white border-none';
     }
   };
 
   const sortedComplaints = [...complaints]
-    .filter(c => {
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        c.reference_number?.toLowerCase().includes(term) ||
-        c.issue_type?.toLowerCase().includes(term) ||
-        c.citizen_name?.toLowerCase().includes(term) ||
-        c.address?.toLowerCase().includes(term)
-      );
-    })
+    .filter(c => 
+      c.issue_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.address?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     .sort((a, b) => {
-      // Top Priority: Dissatisfied Citizens
-      if (a.satisfaction_status === 'Dissatisfied' && b.satisfaction_status !== 'Dissatisfied') return -1;
-      if (a.satisfaction_status !== 'Dissatisfied' && b.satisfaction_status === 'Dissatisfied') return 1;
-
-      let valA = a[sortBy];
-      let valB = b[sortBy];
-
-      // Severity weighing for sorting
-      if (sortBy === 'severity') {
-        const weights: any = { 'High': 3, 'Medium': 2, 'Low': 1 };
-        valA = weights[a.severity] || 0;
-        valB = weights[b.severity] || 0;
-      }
-
+      const valA = a[sortBy];
+      const valB = b[sortBy];
       if (sortOrder === 'asc') {
         return valA > valB ? 1 : -1;
       } else {
@@ -313,7 +261,7 @@ export default function AdminDashboard() {
                                <h3 className="font-bold text-lg text-foreground capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
                                <p className="text-xs text-muted-foreground font-medium mb-4 flex items-start gap-1">
                                   <MapPin className="h-3 w-3 mt-0.5 shrink-0" /> {c.address || 'Location Hidden'}
-                               </p>
+                                </p>
                                <div className="flex flex-col gap-3">
                                   <div className="flex items-center gap-2 text-[11px] font-bold text-orange-500">
                                      <Clock className="h-3.5 w-3.5" /> AI ETA: {c.predicted_days} Days
@@ -704,55 +652,24 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {/* 5. LIVE CITY HEATMAP */}
-            {activeTab === 'heatmap' && (
-              <motion.div key="heatmap" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {/* 5. LEAVE REQUESTS MANAGEMENT */}
+            {activeTab === 'leave-requests' && (
+              <motion.div key="leave-requests" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <div className="mb-8">
                   <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                    <MapIcon className="h-8 w-8 text-emerald-500" /> Live City Heatmap
+                    <Calendar className="h-8 w-8 text-rose-500" /> Leave Management
                   </h1>
-                  <p className="text-muted-foreground mt-1 text-sm">Real-time density mapping of reported civic issues across regions.</p>
+                  <p className="text-muted-foreground mt-1 text-sm">Review, approve, or reject field personnel leave applications.</p>
                 </div>
 
-                <Card className="glass-panel border-emerald-500/20 h-[650px] overflow-hidden relative">
-                  <div className="absolute top-6 left-6 z-[1000] p-4 bg-background/80 backdrop-blur-md border border-border/50 rounded-xl shadow-xl w-64">
-                     <h3 className="font-bold text-sm uppercase tracking-wider mb-3">Density Legend</h3>
-                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold"><div className="w-3 h-3 rounded-full bg-red-500" /> Critical ({'>'}20 cases)</div>
-                        <div className="flex items-center gap-2 text-xs font-bold"><div className="w-3 h-3 rounded-full bg-orange-500" /> Active (10-20 cases)</div>
-                        <div className="flex items-center gap-2 text-xs font-bold"><div className="w-3 h-3 rounded-full bg-blue-500" /> Emerging (1-10 cases)</div>
-                     </div>
-                  </div>
-                  
-                  <div className="h-full relative z-0">
-                    <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" className="grayscale" />
-                      {complaints.filter(c => c.latitude && c.longitude).map(c => (
-                        <Circle 
-                          key={c.id || c._id} 
-                          center={[c.latitude, c.longitude]} 
-                          radius={10000} 
-                          pathOptions={{ 
-                             color: c.severity === 'High' ? 'red' : c.severity === 'Medium' ? 'orange' : 'blue',
-                             fillColor: c.severity === 'High' ? 'red' : c.severity === 'Medium' ? 'orange' : 'blue',
-                             fillOpacity: 0.4 
-                          }}
-                        >
-                          <Popup>
-                             <div className="font-bold">{c.issue_type?.toUpperCase()}</div>
-                             <div className="text-xs text-muted-foreground">{c.address}</div>
-                          </Popup>
-                        </Circle>
-                      ))}
-                    </MapContainer>
-                  </div>
-                </Card>
+                <div className="space-y-6">
+                   <LeaveRequestsList onStatusChange={fetchData} />
+                </div>
               </motion.div>
             )}
 
           </AnimatePresence>
         </main>
-
       </div>
 
       {/* SMART ASSIGNMENT DIALOG */}
@@ -1026,7 +943,6 @@ export default function AdminDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
