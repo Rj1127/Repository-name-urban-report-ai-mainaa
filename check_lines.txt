@@ -1,0 +1,22 @@
+                          sortedComplaints.filter(c => ['Resolved', 'Closed'].includes(c.status)).map(c => (
+                            <Card key={c.id || c._id} className="glass-panel p-5 border-l-4 border-l-emerald-500 bg-emerald-500/5">
+                               <div className="flex justify-between items-center mb-3">
+                                  <div className="flex items-center gap-2">
+                                     <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                     <span className="text-[10px] font-black text-emerald-600 uppercase">Successful Outcome</span>
+                                  </div>
+                                  <span className="text-[10px] font-black text-muted-foreground uppercase">{c.reference_number}</span>
+                               </div>
+                               <h3 className="font-bold text-lg text-foreground/80 capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
+                               <p className="text-xs text-muted-foreground mb-4 font-medium">Closed on: {new Date(c.updated_at || c.created_at).toLocaleDateString()}</p>
+                               <Button variant="outline" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full font-bold border-emerald-500/20 hover:bg-emerald-500/10">View Archive</Button>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+

@@ -186,3 +186,69 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
 
     return { pdf: `/documents/certificates/${certId}.pdf`, jpg: `/documents/certificates/${certId}.jpg`, certId };
 };
+/**
+ * Generates an Official Suspension Letter in PDF format
+ */
+export const generateSuspensionLetter = async (engineer, notice, adminNotes, days = 7) => {
+    const suspId = `SUSP-${Date.now()}`;
+    const pdfPath = path.join(CERTIFICATES_DIR, `${suspId}.pdf`);
+    const untilDate = new Date();
+    untilDate.setDate(untilDate.getDate() + parseInt(days));
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(pdfPath);
+    doc.pipe(stream);
+
+    // Header with Red Accents
+    doc.fontSize(20).fillColor('#991b1b').text('SMART NAGAR REPORTING PORTAL', { align: 'center' });
+    doc.fontSize(24).font('Helvetica-Bold').text('OFFICIAL SUSPENSION ORDER', { align: 'center' });
+    doc.moveDown();
+
+    doc.moveTo(50, 150).lineTo(545, 150).strokeColor('#991b1b').stroke();
+    doc.moveDown();
+
+    // Body
+    doc.fillColor('#000').font('Helvetica').fontSize(12);
+    doc.text(`Order Number: ${suspId}`, { align: 'right' });
+    doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, { align: 'right' });
+    doc.moveDown(2);
+
+    doc.text('To,');
+    doc.font('Helvetica-Bold').text(engineer.name);
+    doc.font('Helvetica').text(`Employee ID: ${engineer._id}`);
+    doc.text(`Department: ${engineer.dept_name || 'Operations'}`);
+    doc.moveDown(2);
+
+    doc.font('Helvetica-Bold').text('Subject: NOTICE OF TEMPORARY SUSPENSION FROM DUTY');
+    doc.moveDown();
+
+    doc.font('Helvetica').text(`This is a formal disciplinary order issued following the review of your explanation regarding the resolution conflict for Complaint Ref: ${notice.complaint_id?.reference_number || 'N/A'}.`);
+    doc.moveDown();
+
+    doc.text('Upon review by the Urban Command Center, your justification was found to be ');
+    doc.font('Helvetica-Bold').text('NOT SATISFACTORY', { continued: true });
+    doc.font('Helvetica').text(' for the following reasons:');
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Oblique').text(`"${adminNotes || 'Professional negligence/dishonesty detected in field report.'}"`, { indent: 20 });
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('CONSEQUENCES:');
+    doc.font('Helvetica').list([
+        `Immediate suspension from the portal for a period of ${days} days.`,
+        `Access to new assignments is blocked until ${untilDate.toLocaleDateString()}.`,
+        `All current and pending bonuses are withheld for the current cycle.`,
+        `This incident will be permanently recorded in your professional conduct file.`
+    ]);
+    doc.moveDown(2);
+
+    doc.text('By Order of,');
+    doc.moveDown();
+    doc.font('Helvetica-Bold').text('The Municipal Commissioner');
+    doc.text('Smart Nagar Urban Administration');
+
+    // Footer Warning
+    doc.fontSize(10).fillColor('#991b1b').text('This is an electronically generated order and does not require a physical signature.', 50, 700, { align: 'center' });
+
+    doc.end();
+    return { pdf: `/documents/certificates/${suspId}.pdf`, suspId, untilDate };
+};

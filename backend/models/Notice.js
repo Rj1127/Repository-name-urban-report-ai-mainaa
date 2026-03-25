@@ -7,6 +7,9 @@ const noticeSchema = new mongoose.Schema({
     message: { type: String, required: true },
     reason: { type: String, default: "" }, // Engineer's reply
     responded: { type: Boolean, default: false },
+    admin_decision: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" },
+    admin_notes: { type: String, default: "" },
+    suspension_letter: { type: String, default: null },
     created_at: { type: Date, default: Date.now }
 });
 

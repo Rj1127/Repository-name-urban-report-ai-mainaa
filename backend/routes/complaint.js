@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "fs";
 import User from "../models/User.js";
 import Complaint from "../models/Complaint.js";
 import Assignment from "../models/Assignment.js";
@@ -8,17 +9,57 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { generateAcknowledgementSlip } from "../utils/documentGenerator.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
 const router = express.Router();
 
-// HELPER: Generate random reference number for unique identification
+/**
+ * MASTER_PROMPT: The "Gold Standard" for civic issue forensic analysis.
+ */
+const MASTER_PROMPT = `
+Analyze this image of a civic/urban environment with forensic precision.
+As a Municipal Inspector, your goal is to identify clear evidence of civic neglect or infrastructure failure.
+
+### ANALYSIS RULES:
+1. INFRASTRUCTURE SCAN: Look for structural cracks, exposed rebars, broken pavement, or malfunctioning utilities.
+2. SANITATION SCAN: Identify accumulated waste, illegal dumping, or overflowing bins.
+3. DRAINAGE & WATER SCAN: Detect waterlogging, blocked culverts, or pipe bursts.
+4. CONFIDENCE SCORING: 
+   - 0.9+: Clear, undeniable evidence (e.g., a wheel-deep pothole).
+   - 0.7-0.9: Highly likely issue (e.g., piles of garbage in a residential area).
+   - 0.5-0.7: Possible issue but image is blurry or context is missing.
+   - < 0.5: No clear civic issue found; classify as 'other'.
+
+### RESPONSE FORMAT:
+You MUST return a JSON object with exactly these keys:
+{
+    "issueType": "pothole" | "garbage" | "blocked_drain" | "road_damage" | "waterlogging" | "other",
+    "confidence": number,
+    "description": "Professional 1-2 sentence description",
+    "forensic_details": ["detail 1", "detail 2"]
+}
+
+Do NOT provide any conversational filler. Return ONLY the JSON.
+`;
+
+const extractJSON = (text) => {
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (e2) {
+                console.error("Failed to parse matched JSON segment:", match[0]);
+            }
+        }
+        throw new Error("Could not extract valid JSON from AI response");
+    }
+};
+
 const generateRefNum = () => 'URB-' + Math.random().toString(36).substr(2, 6).toUpperCase();
 
-/**
- * HELPER: Predicts severity and estimated resolution days based on issue type.
- * This can be expanded with more sophisticated AI logic in the future.
- */
 const predictSeverity = (issueType) => {
     if (['pothole', 'structural_damage', 'waterlogging'].includes(issueType)) {
         return { severity: 'High', predicted_days: 2 };
@@ -33,8 +74,6 @@ const predictSeverity = (issueType) => {
 router.post("/", async (req, res) => {
     try {
         const { user_email, issue_type, description, latitude, longitude, address, image_url } = req.body;
-
-        // Lookup user by email
         const user = await User.findOne({ email: user_email });
         if (!user) return res.status(400).json({ error: "User not found" });
 
@@ -55,7 +94,6 @@ router.post("/", async (req, res) => {
             status: "New"
         });
 
-        // Generate Acknowledgement Slip
         const slipData = await generateAcknowledgementSlip(complaint, user);
 
         res.json({
@@ -72,18 +110,14 @@ router.post("/", async (req, res) => {
 });
 
 // GET COMPLAINTS
-// Optionally filter by user_id or engineer_id
 router.get("/", async (req, res) => {
     try {
         let complaints;
-
         if (req.query.user_id) {
             complaints = await Complaint.find({ user_id: req.query.user_id })
                 .populate("user_id", "name")
                 .sort({ created_at: -1 });
         } else if (req.query.engineer_id) {
-            // Find complaints assigned to this engineer
-            // Handle possible 'undefined' string or empty id
             const eng_id = req.query.engineer_id === 'undefined' ? null : req.query.engineer_id;
             if (!eng_id) return res.json([]);
 
@@ -93,7 +127,6 @@ router.get("/", async (req, res) => {
                 .populate("user_id", "name")
                 .sort({ created_at: -1 });
             
-            // For engineers, we want to attach the assignment details (like deadline)
             const resultWithAssignments = complaints.map(c => {
                 const obj = c.toObject();
                 obj.id = obj._id;
@@ -112,16 +145,11 @@ router.get("/", async (req, res) => {
                 .sort({ created_at: -1 });
         }
 
-        // Fetch all assignments to map engineers to complaints
         const allAssignments = await Assignment.find().populate("engineer_id", "name dept_name");
-
-        // Map populated user name to citizen_name for frontend compatibility
         const result = complaints.map(c => {
             const obj = c.toObject();
             obj.id = obj._id;
             obj.citizen_name = obj.user_id?.name || null;
-            
-            // Find assignment for this complaint
             const assignment = allAssignments.find(a => a.complaint_id.toString() === c._id.toString());
             if (assignment) {
                 obj.assigned_engineer_name = assignment.engineer_id?.name || "Unknown";
@@ -132,7 +160,6 @@ router.get("/", async (req, res) => {
             }
             return obj;
         });
-
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -145,7 +172,6 @@ router.put("/:id", async (req, res) => {
         const complaint = await Complaint.findById(req.params.id);
         if (!complaint) return res.status(404).json({ error: "Complaint not found" });
         if (complaint.status !== 'New') return res.status(400).json({ error: "Cannot modify a complaint that is already being processed." });
-
         complaint.description = req.body.description;
         await complaint.save();
         res.json({ message: "Complaint updated successfully" });
@@ -154,47 +180,25 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-/**
- * ASSIGN COMPLAINT TO ENGINEER
- * Creates an assignment record with a specific deadline provided by the Admin.
- */
+// ASSIGN COMPLAINT
 router.post("/assign", async (req, res) => {
     try {
         const { complaint_id, engineer_id, provided_time } = req.body;
-        
-        // provided_time is expected in hours from the Admin Dashboard.
-        // We calculate the absolute deadline timestamp here.
         const deadline = new Date();
         deadline.setHours(deadline.getHours() + (parseInt(provided_time) || 24)); 
-
-        // Create Assignment entry - tracks the relationship and timing
-        await Assignment.create({
-            complaint_id,
-            engineer_id,
-            deadline,
-            status: "Assigned"
-        });
-
-        // Update Complaint status to 'Forwarded' (meaning it's in the hands of an engineer)
+        await Assignment.create({ complaint_id, engineer_id, deadline, status: "Assigned" });
         await Complaint.findByIdAndUpdate(complaint_id, { status: "Forwarded" });
-        
-        // Update Engineer activity status to 'Busy' to prevent over-assignment
         await User.findByIdAndUpdate(engineer_id, { activity_status: "Busy" });
-
-        res.json({ 
-            message: "Engineer assigned successfully", 
-            deadline: deadline.toISOString() 
-        });
+        res.json({ message: "Engineer assigned successfully", deadline: deadline.toISOString() });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// RESOLVE COMPLAINT (Engineer uploads after-image)
+// RESOLVE COMPLAINT
 router.post("/resolve", async (req, res) => {
     try {
         const { complaint_id, after_image, engineer_id } = req.body;
-
         const complaint = await Complaint.findById(complaint_id);
         if (!complaint) return res.status(404).json({ error: "Complaint not found" });
 
@@ -202,213 +206,129 @@ router.post("/resolve", async (req, res) => {
             return res.status(400).json({ error: "AI Warning: Uploaded image appears identical to the Before image." });
         }
 
-        // --- AI RESOLUTION VERIFICATION ---
         let resolutionAnalysis = { is_resolved: false, analysis_text: "AI verification pending", confidence: 0 };
-        
         try {
             const base64Data = after_image.replace(/^data:image\/\w+;base64,/, "");
             const beforeBase64 = complaint.before_image ? complaint.before_image.replace(/^data:image\/\w+;base64,/, "") : null;
-
-            const prompt = `
-            Analyze these two images of a civic issue (Before and After).
-            Before Image Type: ${complaint.issue_type}
-            Before Image Description: ${complaint.description}
-
-            Compare them and determine:
-            1. Is the issue resolved in the After image?
-            2. Is the After image related to the Before image/issue?
-            3. Is the After image a "False Image" (irrelevant, same as before, or clearly fraudulent)?
-            4. If it is a False Image, what does the After image actually show?
-
-            Return ONLY a JSON object:
-            {
-                "is_resolved": boolean,
-                "is_false_image": boolean,
-                "confidence": number (0-1),
-                "analysis": "string describing what changed or why it is false",
-                "detected_content": "string describing the actual content if false, else empty"
-            }
-        `;
-
-            const contents = [
-                { role: "user", parts: [ { text: prompt }, 
-                    { inlineData: { data: beforeBase64, mimeType: "image/jpeg" } },
-                    { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
-                ] }
-            ];
-
+            const prompt = `Analyze Before and After images. Return JSON: {is_resolved: boolean, is_false_image: boolean, confidence: number, analysis: string, detected_content: string}`;
+            const contents = [ { role: "user", parts: [ { text: prompt }, { inlineData: { data: beforeBase64, mimeType: "image/jpeg" } }, { inlineData: { data: base64Data, mimeType: "image/jpeg" } } ] } ];
             const result = await model.generateContent({ contents });
             const response = await result.response;
-            const text = response.text().trim();
-            const aiData = JSON.parse(text);
+            const aiData = JSON.parse(response.text().trim());
+            resolutionAnalysis = { is_resolved: aiData.is_resolved || false, is_false_image: aiData.is_false_image || false, analysis_text: aiData.analysis || "Analysis complete", detected_content: aiData.detected_content || "", confidence: aiData.confidence || 0.5 };
+        } catch (aiErr) { console.error("AI Analysis Failed", aiErr); }
 
-            resolutionAnalysis = {
-                is_resolved: aiData.is_resolved || false,
-                is_false_image: aiData.is_false_image || false,
-                analysis_text: aiData.analysis || "Analysis complete",
-                detected_content: aiData.detected_content || "",
-                confidence: aiData.confidence || 0.5
-            };
-        } catch (aiErr) {
-            console.error("AI Resolution Analysis Failed:", aiErr);
-        }
-
-        await Complaint.findByIdAndUpdate(complaint_id, { 
-            status: "Resolved", 
-            after_image,
-            resolution_analysis: resolutionAnalysis
-        });
-        
+        await Complaint.findByIdAndUpdate(complaint_id, { status: "Resolved", after_image, resolution_analysis: resolutionAnalysis });
         await Assignment.updateMany({ complaint_id }, { status: "Resolved" });
         await User.findByIdAndUpdate(engineer_id, { activity_status: "Available" });
-
-        res.json({ 
-            message: "Resolution uploaded and verified by AI.",
-            analysis: resolutionAnalysis
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        res.json({ message: "Resolution uploaded and verified by AI.", analysis: resolutionAnalysis });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // CITIZEN FEEDBACK
 router.post("/feedback", async (req, res) => {
     try {
         const { complaint_id, satisfied, rating, feedback } = req.body;
-
         if (satisfied) {
-            await Complaint.findByIdAndUpdate(complaint_id, {
-                satisfaction_status: "Satisfied",
-                citizen_rating: rating || 5,
-                citizen_feedback: feedback || "Satisfied with work",
-                status: "Closed"
-            });
-            res.json({ message: "Thank you! Complaint closed and rating submitted." });
+            await Complaint.findByIdAndUpdate(complaint_id, { satisfaction_status: "Satisfied", citizen_rating: rating || 5, citizen_feedback: feedback || "Satisfied with work", status: "Closed" });
+            res.json({ message: "Thank you! Complaint closed." });
         } else {
-            await Complaint.findByIdAndUpdate(complaint_id, { 
-                satisfaction_status: "Dissatisfied",
-                citizen_feedback: feedback || "Work not satisfactory"
-            });
-            res.json({ message: "Feedback sent to Admin. Notice may be issued to engineer." });
+            await Complaint.findByIdAndUpdate(complaint_id, { satisfaction_status: "Dissatisfied", citizen_feedback: feedback || "Work not satisfactory" });
+            res.json({ message: "Feedback sent to Admin." });
         }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// CREATE NOTICE (Admin to Engineer)
+// CREATE NOTICE
 router.post("/notice", async (req, res) => {
     try {
         const { engineer_id, admin_id, complaint_id, message } = req.body;
         const notice = await Notice.create({ engineer_id, admin_id, complaint_id, message });
-        res.json({ message: "Notice issued to engineer.", notice });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        res.json({ message: "Notice issued.", notice });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET NOTICES FOR ENGINEER
 router.get("/notices/:engineer_id", async (req, res) => {
     try {
-        const notices = await Notice.find({ engineer_id: req.params.engineer_id })
-            .populate("complaint_id", "reference_number status")
-            .sort({ created_at: -1 });
+        const notices = await Notice.find({ engineer_id: req.params.engineer_id }).populate("complaint_id", "reference_number status").sort({ created_at: -1 });
         res.json(notices);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// RESPOND TO NOTICE (Engineer reply)
+// RESPOND TO NOTICE
 router.post("/notices/:notice_id/respond", async (req, res) => {
     try {
         const { reason } = req.body;
-        await Notice.findByIdAndUpdate(req.params.notice_id, { 
-            reason, 
-            responded: true 
-        });
-        res.json({ message: "Response submitted to Admin." });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        await Notice.findByIdAndUpdate(req.params.notice_id, { reason, responded: true });
+        res.json({ message: "Response submitted." });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Analyze Image using Gemini
+// GET ALL NOTICES (For Admin review)
+router.get("/notices/all", async (req, res) => {
+    try {
+        const notices = await Notice.find().populate("engineer_id", "name dept_name").populate("complaint_id", "reference_number status").sort({ created_at: -1 });
+        res.json(notices);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// REVIEW NOTICE (Admin decision)
+router.post("/notices/:notice_id/review", async (req, res) => {
+    try {
+        const { action, notes, suspension_days } = req.body;
+        const notice = await Notice.findById(req.params.notice_id).populate("engineer_id").populate("complaint_id");
+        if (!notice) return res.status(404).json({ error: "Notice not found" });
+
+        if (action === 'accept') {
+            await Notice.findByIdAndUpdate(req.params.notice_id, { admin_decision: "Accepted", admin_notes: notes || "Explanation accepted. Re-assigning." });
+            await Complaint.findByIdAndUpdate(notice.complaint_id._id, { 
+                $addToSet: { excluded_engineers: notice.engineer_id._id }, 
+                status: "New",
+                is_reassigned: true 
+            });
+            await Assignment.deleteMany({ complaint_id: notice.complaint_id._id });
+            await User.findByIdAndUpdate(notice.engineer_id._id, { activity_status: "Available" });
+            res.json({ message: "Explanation accepted." });
+        } else {
+            const { generateSuspensionLetter } = await import("../utils/documentGenerator.js");
+            const suspData = await generateSuspensionLetter(notice.engineer_id, notice, notes, suspension_days || 7);
+            await Notice.findByIdAndUpdate(req.params.notice_id, { admin_decision: "Rejected", admin_notes: notes || "Explanation rejected.", suspension_letter: suspData.pdf });
+            await User.findByIdAndUpdate(notice.engineer_id._id, { 
+                is_suspended: true, 
+                suspension_until: suspData.untilDate, 
+                suspension_letter: suspData.pdf,
+                activity_status: "On Leave" 
+            });
+            res.json({ message: "Explanation rejected." });
+        }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ANALYZE IMAGE
 router.post("/analyze-image", async (req, res) => {
     try {
         const { imageBase64 } = req.body;
-
-        if (!imageBase64) {
-            return res.status(400).json({ error: "No image provided" });
-        }
-
-        // Strip the data:image/jpeg;base64,... prefix
+        if (!imageBase64) return res.status(400).json({ error: "No image provided" });
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-
-        const prompt = `Analyze this image of a civic/urban environment. 
-Determine if it depicts a civic problem that a municipal corporation would fix.
-You must return a raw JSON object with exactly these three keys:
-- "issueType": string (one of: 'garbage', 'pothole', 'waterlogging', 'broken_streetlight', 'structural_damage', or 'other'). Choose 'other' if it is not a civic issue or not clearly one of the specified types.
-- "confidence": number (between 0.0 and 1.0 representing your confidence)
-- "description": string (A short, professional 1-2 sentence description of what you see and why it's a problem)
-
-Do NOT wrap the response in markdown blocks like \`\`\`json. Return ONLY the raw JSON string.`;
-
-        const imagePart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: "image/jpeg"
-            }
-        };
-
-        const result = await model.generateContent([prompt, imagePart]);
+        const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
+        const result = await model.generateContent([MASTER_PROMPT, imagePart]);
         const response = await result.response;
-        let text = response.text();
-
-        if (text.startsWith('```json')) {
-            text = text.replace(/```json\n|\n```/g, '');
-        } else if (text.startsWith('```')) {
-            text = text.replace(/```\n|\n```/g, '');
-        }
-
-        try {
-            const parsed = JSON.parse(text);
-            res.json(parsed);
-        } catch (e) {
-            console.error("Failed to parse Gemini JSON:", text);
-            res.json({
-                issueType: "other",
-                confidence: 0.5,
-                description: "AI analyzed the image but formatting failed. " + text.substring(0, 100)
-            });
-        }
-
-    } catch (err) {
-        console.error("AI Analysis Error:", err);
-        res.status(500).json({ error: "AI Analysis Failed: " + err.message });
-    }
+        const text = response.text().trim();
+        try { const parsed = extractJSON(text); res.json(parsed); } catch (e) { res.status(500).json({ error: "AI formatting error" }); }
+    } catch (err) { res.status(500).json({ error: "AI Analysis Failed: " + err.message }); }
 });
 
-// DELETE COMPLAINT (Citizen withdraws report)
+// DELETE COMPLAINT
 router.delete("/:id", async (req, res) => {
     try {
         const complaint = await Complaint.findById(req.params.id);
         if (!complaint) return res.status(404).json({ error: "Complaint not found" });
-
-        // Security: only allow deletion if not yet processed
-        if (complaint.status !== 'New') {
-            return res.status(400).json({ error: "Cannot delete a complaint that is already being processed." });
-        }
-
+        if (complaint.status !== 'New') return res.status(400).json({ error: "Cannot delete processing complaint." });
         await Complaint.findByIdAndDelete(req.params.id);
-        
-        // Also cleanup any associated assignments (though there shouldn't be any for 'New' status)
         await Assignment.deleteMany({ complaint_id: req.params.id });
-
-        res.json({ message: "Complaint deleted successfully" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+        res.json({ message: "Complaint deleted." });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 export default router;

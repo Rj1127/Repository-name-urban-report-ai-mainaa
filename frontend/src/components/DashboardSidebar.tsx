@@ -1,4 +1,4 @@
-import { User, FileText, Edit, Key, LogOut, LayoutDashboard, Building2, Shield, Users, Activity, Map, BarChart3, Wrench, Calendar, ClipboardCheck, Bell } from 'lucide-react';
+import { User, FileText, Edit, Key, LogOut, LayoutDashboard, Building2, Shield, Users, Activity, Map, BarChart3, Wrench, Calendar, ClipboardCheck, Bell, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ export default function DashboardSidebar() {
         { icon: LayoutDashboard, label: 'Admin Dashboard', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/admin?tab=dashboard') },
         { icon: Shield, label: 'Command Centre', color: 'text-primary', bg: 'bg-primary/10', action: () => navigate('/admin?tab=command-center') },
         { icon: Users, label: 'Engineer Details', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', action: () => navigate('/admin?tab=engineers') },
+        { icon: ShieldOff, label: 'Compliance & Discipline', color: 'text-destructive', bg: 'bg-destructive/10', action: () => navigate('/admin?tab=discipline') },
         { icon: Calendar, label: 'Leave Requests', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30', action: () => navigate('/admin?tab=leave-requests') },
         { icon: Activity, label: 'Flood Risk Predictor', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', action: () => navigate('/admin?tab=flood-risk') },
         { icon: Map, label: 'Live City Heatmap', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => navigate('/admin?tab=heatmap') },
@@ -26,7 +27,7 @@ export default function DashboardSidebar() {
         { icon: Wrench, label: 'Operational Terminal', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/resolver') },
         { icon: ClipboardCheck, label: 'Work History', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => navigate('/resolver?tab=history') },
         { icon: Calendar, label: 'Apply for Leave', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30', action: () => navigate('/leave/apply') },
-        { icon: Bell, label: 'Leave Status', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', action: () => navigate('/leave/status') },
+        { icon: Bell, label: 'Leave Status', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-100', action: () => navigate('/leave/status') },
       ];
     }
     
@@ -48,9 +49,8 @@ export default function DashboardSidebar() {
           <h3 className="text-2xl font-extrabold tracking-tight text-foreground mb-6 pl-2">Account</h3>
           <nav className="space-y-3">
             {menuItems.map((item, index) => {
-              const isActive = (user?.role === 'admin' && location.search.includes(`tab=${item.label.toLowerCase().replace(/ /g, '-')}`)) ||
-                               (user?.role === 'resolver' && (location.pathname === item.action.toString().split('?')[0] || location.search.includes(`tab=${item.label.toLowerCase().replace(/ /g, '-')}`))) ||
-                               (user?.role !== 'admin' && user?.role !== 'resolver' && location.pathname === item.action.toString().split('?')[0]);
+              const isActive = (item.action.toString().includes('tab=') && location.search.includes(item.action.toString().split('?')[1])) ||
+                               (!item.action.toString().includes('tab=') && location.pathname === item.action.toString());
               
               return (
                 <Button

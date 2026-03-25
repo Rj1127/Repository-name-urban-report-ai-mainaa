@@ -20,7 +20,8 @@ const complaintSchema = new mongoose.Schema({
     },
     satisfaction_status: { type: String, enum: ["Pending", "Satisfied", "Dissatisfied"], default: "Pending" },
     citizen_feedback: { type: String, default: "" },
-    citizen_satisfied: { type: Boolean, default: null }
+    citizen_satisfied: { type: Boolean, default: null },
+    excluded_engineers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 }, { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } });
 
 const Complaint = mongoose.model("Complaint", complaintSchema);

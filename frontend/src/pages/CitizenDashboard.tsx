@@ -90,8 +90,13 @@ export default function CitizenDashboard() {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
       const data = await res.json();
-      if (data && data.display_name) {
-        setAddress(data.display_name);
+      if (data && data.address) {
+        const addr = data.address;
+        const main = addr.road || addr.suburb || addr.neighbourhood || addr.amenity || "";
+        const city = addr.city || addr.town || addr.village || addr.county || "";
+        const state = addr.state || "";
+        const display = [main, city, state].filter(Boolean).join(", ");
+        setAddress(display || data.display_name);
       }
     } catch (err) {
       console.error("Geocoding failed", err);
@@ -100,15 +105,31 @@ export default function CitizenDashboard() {
 
   const captureLocation = () => {
     if ("geolocation" in navigator) {
+      toast.info("Fetching high-precision coordinates...");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          const accuracy = pos.coords.accuracy;
+          console.log(`GPS Location Captured: ${lat}, ${lng} (Accuracy: ${accuracy}m)`);
           setLocation({ lat, lng });
           reverseGeocode(lat, lng);
+          toast.success(`Location locked (±${Math.round(accuracy)}m)`);
         },
-        () => toast.error("Please allow location access")
+        (err) => {
+          console.error("Geolocation Error:", err);
+          if (err.code === 1) toast.error("Location permission denied.");
+          else if (err.code === 3) toast.error("GPS Timeout. Using fallback...");
+          else toast.error("Could not fetch precise location.");
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000, 
+          maximumAge: 0 
+        }
       );
+    } else {
+      toast.error("Geolocation not supported by your browser.");
     }
   };
 
@@ -405,7 +426,18 @@ export default function CitizenDashboard() {
                             <h2 className="text-3xl font-black uppercase leading-none">{analysis.issueType.replace('_', ' ')}</h2>
                             <Badge className="bg-primary/20 text-primary border-primary/30 font-black text-xs">{(analysis.confidence * 100).toFixed(1)}% Confidence</Badge>
                           </div>
-                          <p className="mt-3 text-base text-muted-foreground font-bold leading-relaxed">{analysis.description}</p>
+                          <p className="mt-3 text-base text-muted-foreground font-bold leading-relaxed">
+                            {analysis.description}
+                          </p>
+                          {analysis.forensic_details && analysis.forensic_details.length > 0 && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {analysis.forensic_details.map((detail: string, i: number) => (
+                                <Badge key={i} variant="outline" className="bg-success/5 text-success border-success/20 text-[10px] font-bold py-1 px-2">
+                                  <Sparkles className="h-3 w-3 mr-1" /> {detail}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -496,8 +528,23 @@ export default function CitizenDashboard() {
                      <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <Camera className="h-3 w-3" /> Citizen Report Photo
                      </h4>
-                     <div className="aspect-video rounded-2xl overflow-hidden border border-border/50 bg-secondary/20 shadow-inner group">
-                        <img src={selectedTrack.before_image} alt="Before" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                     <div className="aspect-video rounded-2xl overflow-hidden border border-border/50 bg-secondary/20 shadow-inner group flex items-center justify-center">
+                        {selectedTrack.before_image ? (
+                           <img 
+                              src={selectedTrack.before_image} 
+                              alt="Before" 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                              onError={(e) => {
+                                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
+                                 console.warn("Broken Before Image detected, using fallback.");
+                              }}
+                           />
+                        ) : (
+                           <div className="text-center p-6 grayscale opacity-40">
+                              <Camera className="h-10 w-10 mx-auto mb-2" />
+                              <p className="text-[10px] font-black uppercase">Original Image Lost</p>
+                           </div>
+                        )}
                      </div>
                   </div>
                   <div className="space-y-2">
@@ -559,7 +606,7 @@ export default function CitizenDashboard() {
                             className={`h-14 font-black uppercase tracking-wider transition-all ${satisfactionSelected === 'dissatisfied' ? 'bg-destructive text-white border-destructive shadow-glow-destructive' : 'border-destructive/30 text-destructive hover:bg-destructive/5'}`}
                         >
                             <ThumbsDown className="mr-2 h-5 w-5" /> 
-                            No, it's False/Incomplete
+                            No, it's False/Illegal Activity
                         </Button>
                         <Button 
                             onClick={() => setSatisfactionSelected('satisfied')} 
@@ -601,7 +648,7 @@ export default function CitizenDashboard() {
                                     disabled={citizenRating === 0}
                                     className={`w-full h-14 font-black uppercase tracking-widest text-white shadow-glow ${satisfactionSelected === 'satisfied' ? 'gradient-primary' : 'bg-destructive hover:bg-destructive/90'}`}
                                  >
-                                    {satisfactionSelected === 'satisfied' ? 'Confirm and Close Complaint' : 'Report False Image to Command Center'}
+                                    {satisfactionSelected === 'satisfied' ? 'Confirm and Close Complaint' : 'Report Dishonest/Illegal Activity'}
                                  </Button>
                               </div>
                            </motion.div>

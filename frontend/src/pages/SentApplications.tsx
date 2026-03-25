@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, MapPin, Clock, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,16 +8,29 @@ import DashboardSidebar from '@/components/DashboardSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+interface Complaint {
+    id?: string;
+    _id?: string;
+    issue_type: string;
+    description: string;
+    address?: string;
+    latitude: number;
+    longitude: number;
+    status: string;
+    severity: string;
+    reference_number: string;
+    predicted_days: number;
+    before_image?: string;
+    created_at: string;
+    is_reassigned?: boolean;
+}
+
 export default function SentApplications() {
     const { user } = useAuth();
-    const [complaints, setComplaints] = useState<any[]>([]);
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (user) fetchComplaints();
-    }, [user]);
-
-    const fetchComplaints = async () => {
+    const fetchComplaints = useCallback(async () => {
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints?user_id=${user?._id || user?.id}`);
             const data = await res.json();
@@ -28,7 +41,11 @@ export default function SentApplications() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user) fetchComplaints();
+    }, [user, fetchComplaints]);
 
     const handleDelete = async (id: string, ref: string) => {
         if (!window.confirm(`Are you sure you want to withdraw and delete complaint ${ref}?`)) return;
@@ -41,8 +58,9 @@ export default function SentApplications() {
             if (!res.ok) throw new Error(data.error || "Delete failed");
             toast.success("Complaint withdrawn successfully");
             fetchComplaints();
-        } catch (err: any) {
-            toast.error(err.message);
+        } catch (err: unknown) {
+            const error = err as Error;
+            toast.error(error.message);
         }
     };
 
@@ -125,6 +143,11 @@ export default function SentApplications() {
                                                     <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-muted-foreground">
                                                         <span className="flex items-center"><Clock className="h-4 w-4 mr-1.5" /> Ref: {c.reference_number}</span>
                                                         <span className="flex items-center"><AlertCircle className="h-4 w-4 mr-1.5 text-primary" /> AI Est. Resolution: {c.predicted_days} Days</span>
+                                                        {c.is_reassigned && (
+                                                            <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-200 font-black text-[10px] animate-pulse">
+                                                                RE-ASSIGNED TO NEW ENGINEER
+                                                            </Badge>
+                                                        )}
                                                         {c.created_at && <span className="flex items-center text-foreground/60 ml-auto">{new Date(c.created_at).toLocaleDateString()}</span>}
                                                     </div>
                                                 </div>

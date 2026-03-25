@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,22 +29,6 @@ export default function ResolverDashboard() {
   const [noticeResponse, setNoticeResponse] = useState('');
   const [submittingNotice, setSubmittingNotice] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-      fetchNotices();
-    }
-  }, [user]);
-
-  // Mandatory Alert Trigger
-  useEffect(() => {
-    const pendingNotice = notices.find(n => !n.responded);
-    if (pendingNotice && !noticeModalOpen) {
-      setSelectedNotice(pendingNotice);
-      setNoticeModalOpen(true);
-    }
-  }, [notices]);
-
   const fetchTasks = async () => {
     try {
       const userId = user?._id || user?.id;
@@ -71,6 +55,22 @@ export default function ResolverDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+      fetchNotices();
+    }
+  }, [user]);
+
+  // Mandatory Alert Trigger
+  useEffect(() => {
+    const pendingNotice = notices.find(n => !n.responded);
+    if (pendingNotice && !noticeModalOpen) {
+      setSelectedNotice(pendingNotice);
+      setNoticeModalOpen(true);
+    }
+  }, [notices, noticeModalOpen]);
+
   const openResolveModal = (task: any) => {
     setSelectedTask(task);
     setAfterImagePreview(null);
@@ -91,7 +91,7 @@ export default function ResolverDashboard() {
     setUploading(true);
     try {
       const payload = {
-        complaint_id: selectedTask.id,
+        complaint_id: selectedTask.id || selectedTask._id,
         engineer_id: user?._id || user?.id,
         after_image: afterImagePreview
       };
@@ -148,138 +148,195 @@ export default function ResolverDashboard() {
 
       <div className="flex flex-1 overflow-hidden w-full max-w-[1400px] mx-auto">
         <DashboardSidebar />
-        <main className="container max-w-5xl py-8 flex-1 overflow-y-auto hide-scrollbar">
-          
-          {/* HEADER & NOTICES SUMMARY */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 p-6 bg-secondary/20 border border-border/50 rounded-2xl flex items-center gap-4">
-              <div className="h-16 w-16 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-glow">
-                <Wrench className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Engineer Field Terminal</h1>
-                <p className="text-muted-foreground mt-1 text-sm font-bold">Active deployments: {Array.isArray(tasks) ? tasks.filter(t => !['Resolved', 'Closed'].includes(t.status)).length : 0}</p>
-              </div>
-            </div>
-
-            {/* UNRESPONDED NOTICES COUNT */}
-            <div className="p-6 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-center justify-between">
-               <div>
-                  <h3 className="text-xs font-black uppercase text-destructive tracking-widest flex items-center gap-2">
-                     <ShieldAlert className="h-4 w-4" /> Disciplinary Notices
-                  </h3>
-                  <p className="text-2xl font-black mt-1">{notices.filter(n => !n.responded).length}</p>
-                  <p className="text-[10px] font-bold text-muted-foreground">Require immediate response</p>
+        
+        {user?.is_suspended && (
+          <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full glass-strong border-2 border-destructive p-8 rounded-3xl text-center shadow-glow-destructive">
+               <ShieldAlert className="h-16 w-16 text-destructive mx-auto mb-6" />
+               <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">Account Suspended</h1>
+               <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">Disciplinary Action in Effect</p>
+               
+               <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5 mb-8 text-left">
+                  <p className="text-xs font-bold text-destructive flex items-center gap-2 mb-2 uppercase">
+                    <Clock className="h-4 w-4" /> Period Active Until:
+                  </p>
+                  <p className="text-lg font-black text-foreground">
+                    {new Date(user.suspension_until || '').toLocaleString()}
+                  </p>
                </div>
-               <ShieldAlert className={`h-10 w-10 text-destructive ${notices.filter(n => !n.responded).length > 0 ? 'animate-pulse' : 'opacity-20'}`} />
-            </div>
+
+               <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+                  Your access to the Operational Terminal has been restricted following an official review of your performance metrics. Please refer to the formal suspension order for details.
+               </p>
+
+               <div className="flex flex-col gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => user.suspension_letter && window.open(`${import.meta.env.VITE_API_BASE_URL}${user.suspension_letter}`)}
+                    className="h-12 border-destructive/30 text-destructive font-black uppercase tracking-widest hover:bg-destructive/10"
+                  >
+                     <FileText className="h-4 w-4 mr-2" /> Download Suspension Order
+                  </Button>
+                  <Button variant="ghost" className="font-bold text-muted-foreground uppercase text-xs" onClick={() => window.location.href='/'}>
+                     Exit Terminal
+                  </Button>
+               </div>
+            </motion.div>
           </div>
+        )}
 
-          {/* ACTIVE NOTICES LIST (IF ANY) */}
-          <AnimatePresence>
-            {notices.filter(n => !n.responded).length > 0 && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 overflow-hidden">
-                <h2 className="text-sm font-black uppercase text-destructive mb-4 flex items-center gap-2">
-                   <AlertTriangle className="h-4 w-4" /> Pending Explanations
+        <main className="container max-w-[1400px] py-8 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* LEFT COLUMN: OPERATIONAL GRID */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-black uppercase text-foreground flex items-center gap-2">
+                  <Wrench className="h-5 w-5 text-primary" /> Operational Task List
                 </h2>
-                <div className="space-y-3">
-                   {notices.filter(n => !n.responded).map(notice => (
-                     <Card key={notice._id} className="p-4 border-destructive/30 bg-destructive/5 flex items-center justify-between group hover:bg-destructive/10 transition-colors">
-                        <div className="flex items-center gap-4">
-                           <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center text-destructive">
-                              <MessageSquare className="h-5 w-5" />
-                           </div>
-                           <div>
-                              <p className="text-sm font-black uppercase text-foreground">Conflict: {notice.complaint_id?.reference_number || 'Internal Ref'}</p>
-                              <p className="text-xs font-bold text-muted-foreground line-clamp-1">{notice.message}</p>
-                           </div>
-                        </div>
-                        <Button size="sm" variant="destructive" onClick={() => { setSelectedNotice(notice); setNoticeModalOpen(true); }} className="h-8 font-black uppercase text-[10px] tracking-widest px-4">
-                           Explain Conflict
-                        </Button>
-                     </Card>
-                   ))}
+                <Badge variant="outline" className="font-bold border-primary/20 bg-primary/5 text-primary">
+                  {Array.isArray(tasks) ? tasks.filter(t => !['Resolved', 'Closed'].includes(t.status)).length : 0} ACTIVE
+                </Badge>
+              </div>
+
+              {loading ? (
+                <div className="text-center p-12 text-muted-foreground bg-secondary/10 rounded-2xl border border-dashed border-border/50">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="font-bold uppercase tracking-widest text-xs">Syncing Field Telemetry...</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <h2 className="text-sm font-black uppercase text-muted-foreground mb-4 flex items-center gap-2">
-             <Info className="h-4 w-4" /> Operational Task List
-          </h2>
-
-          {loading ? (
-            <div className="text-center p-12 text-muted-foreground">Syncing Tasks...</div>
-          ) : !Array.isArray(tasks) || tasks.length === 0 ? (
-            <Card className="glass-panel p-12 text-center text-muted-foreground flex flex-col items-center">
-              <CheckCircle className="h-12 w-12 text-success/50 mb-4" />
-              <p className="font-medium text-lg">No active assignments.</p>
-              <p className="text-sm mt-1">Stand by for dispatch from Command Center.</p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AnimatePresence>
-                {tasks.map(task => {
-                  const isCompleted = ['Resolved', 'Closed'].includes(task.status);
-                  return (
-                    <motion.div key={task.id || task._id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-                      <Card className={`glass-panel overflow-hidden border ${isCompleted ? 'opacity-70 border-success/30' : 'border-primary/20 hover:border-primary/50'} transition-all shadow-card h-full flex flex-col group`}>
-
-                        <div className="relative h-48 w-full bg-secondary shrink-0 overflow-hidden">
-                          {task.before_image ?
-                            <img src={task.before_image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Issue" /> :
-                            <div className="flex h-full items-center justify-center"><AlertTriangle className="h-8 w-8 text-muted-foreground" /></div>
-                          }
-                          <div className="absolute top-3 right-3 flex gap-2">
-                            <Badge className={`${isCompleted ? 'bg-success text-white px-4 border-none shadow-glow text-[10px] font-black' : 'bg-orange-500 text-white animate-pulse shadow-glow text-[10px] font-black uppercase tracking-widest'}`}>{task.status}</Badge>
-                          </div>
-                        </div>
-
-                        <div className="p-5 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-bold text-foreground text-lg uppercase truncate">{task.issue_type?.replace('_', ' ')}</h3>
-                            <span className="text-xs font-bold tracking-wider text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-                              <Hash className="h-3 w-3 inline mr-0.5 text-primary" />{task.reference_number}
-                            </span>
-                          </div>
-                          <p className="text-sm text-foreground/80 line-clamp-2 flex-1 font-medium">{task.description}</p>
-
-                          <div className="mt-4 space-y-2 mb-6">
-                            <p className="text-xs text-muted-foreground flex items-center bg-secondary/50 p-2 rounded-lg font-bold border border-border/30">
-                              <MapPin className="h-4 w-4 mr-2 text-primary" /> {task.address || `Coordinates: ${task.latitude}, ${task.longitude}`}
-                            </p>
-                            <div className="bg-orange-500/5 border border-orange-500/20 p-3 rounded-xl shadow-inner">
-                               <div className="flex justify-between items-center mb-1">
-                                  <span className="text-[10px] font-black uppercase text-orange-600 tracking-tighter">Deadline Remnant</span>
-                                  <Clock className="h-3 w-3 text-orange-500" />
-                               </div>
-                               <CountdownTimer deadline={task.deadline} />
+              ) : !Array.isArray(tasks) || tasks.length === 0 ? (
+                <Card className="glass-panel p-12 text-center text-muted-foreground flex flex-col items-center">
+                  <CheckCircle className="h-12 w-12 text-success/50 mb-4" />
+                  <p className="font-medium text-lg">No active assignments.</p>
+                  <p className="text-sm mt-1">Stand by for dispatch from Command Center.</p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <AnimatePresence>
+                    {tasks.map(task => {
+                      const isCompleted = ['Resolved', 'Closed'].includes(task.status);
+                      return (
+                        <motion.div key={task.id || task._id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                          <Card className={`glass-panel overflow-hidden border ${isCompleted ? 'opacity-70 border-success/30' : 'border-primary/20 hover:border-primary/50'} transition-all shadow-card h-full flex flex-col group`}>
+                            <div className="relative h-44 w-full bg-secondary shrink-0 overflow-hidden">
+                              {task.before_image ?
+                                <img src={task.before_image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Issue" /> :
+                                <div className="flex h-full items-center justify-center"><AlertTriangle className="h-8 w-8 text-muted-foreground" /></div>
+                              }
+                              <div className="absolute top-3 right-3 flex gap-2">
+                                <Badge className={`${isCompleted ? 'bg-success text-white px-4 border-none shadow-glow text-[10px] font-black' : 'bg-orange-500 text-white animate-pulse shadow-glow text-[10px] font-black uppercase tracking-widest'}`}>{task.status}</Badge>
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="mt-auto flex flex-col gap-2">
-                             <Button variant="outline" onClick={() => { setSelectedTask(task); setViewModalOpen(true); }} className="w-full h-11 border-primary/20 hover:bg-primary/5 hover:border-primary/50 font-black uppercase text-xs tracking-widest transition-all">
-                                Inspection Profile
-                             </Button>
-                            {!isCompleted ? (
-                              <Button onClick={() => openResolveModal(task)} className="w-full h-11 gradient-primary hover:shadow-glow font-black uppercase text-sm tracking-widest text-primary-foreground transition-all">
-                                Record Work Completion
-                              </Button>
-                            ) : (
-                              <Button disabled className="w-full h-11 bg-success/20 text-success border border-success/30 font-black uppercase text-sm tracking-widest opacity-100 shadow-inner">
-                                <CheckCircle className="h-4 w-4 mr-2" /> Verification Pending
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                      </Card>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
+                            <div className="p-5 flex-1 flex flex-col">
+                              <div className="flex justify-between items-start mb-2">
+                                <h3 className="font-bold text-foreground text-md uppercase truncate">{task.issue_type?.replace('_', ' ')}</h3>
+                                <span className="text-[10px] font-bold tracking-wider text-muted-foreground bg-secondary px-2 py-0.5 rounded">
+                                  <Hash className="h-2.5 w-2.5 inline mr-0.5 text-primary" />{task.reference_number}
+                                </span>
+                              </div>
+                              <p className="text-xs text-foreground/80 line-clamp-2 flex-1 font-medium italic mb-4">"{task.description}"</p>
+                              <div className="space-y-2 mb-4">
+                                <p className="text-[10px] text-muted-foreground flex items-center bg-secondary/50 p-2 rounded-lg font-bold border border-border/30">
+                                  <MapPin className="h-3 w-3 mr-2 text-primary" /> {task.address || "Localized Sector"}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                {!isCompleted ? (
+                                  <Button onClick={() => openResolveModal(task)} size="sm" className="w-full h-10 gradient-primary hover:shadow-glow font-black uppercase text-[11px] tracking-widest text-primary-foreground">
+                                    Record Work Completion
+                                  </Button>
+                                ) : (
+                                  <Button disabled size="sm" className="w-full h-10 bg-success/20 text-success border border-success/30 font-black uppercase text-[11px] tracking-widest">
+                                    Resolved
+                                  </Button>
+                                )}
+                                <Button variant="outline" size="sm" onClick={() => { setSelectedTask(task); setViewModalOpen(true); }} className="w-full h-9 border-primary/10 hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest">
+                                    Inspection Profile
+                                 </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* RIGHT COLUMN: DISCIPLINARY ACTION CENTER */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="sticky top-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-black uppercase text-destructive flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5" /> Disciplinary Action Center
+                  </h2>
+                  {notices.filter(n => !n.responded).length > 0 && (
+                    <Badge className="bg-destructive animate-bounce text-white shadow-glow-destructive font-black">
+                      {notices.filter(n => !n.responded).length} URGENT
+                    </Badge>
+                  )}
+                </div>
+
+                <Card className="glass-strong border-destructive/20 overflow-hidden shadow-elevated">
+                  <div className="p-6 bg-destructive/10 border-b border-destructive/20">
+                    <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-2 flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Real-time Compliance Monitoring
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-foreground">Pending Statements</span>
+                      <span className="text-2xl font-black text-destructive">{notices.filter(n => !n.responded).length}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-4 max-h-[600px] overflow-y-auto hide-scrollbar">
+                    {notices.length === 0 ? (
+                      <div className="text-center py-10 opacity-40 grayscale">
+                        <CheckCircle className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-[10px] font-black uppercase">Clean Compliance Record</p>
+                      </div>
+                    ) : (
+                      notices.map(notice => (
+                        <div key={notice._id} className={`p-4 rounded-xl border leading-relaxed transition-all ${notice.responded ? 'bg-secondary/20 border-border/50 opacity-60' : 'bg-destructive/5 border-destructive/20 hover:bg-destructive/10 shadow-sm'}`}>
+                          <div className="flex justify-between items-start mb-2">
+                             <Badge variant="outline" className={`text-[9px] font-black ${notice.responded ? 'border-success/30 text-success' : 'border-destructive/30 text-destructive'}`}>
+                                {notice.responded ? 'RESOLVED' : 'ACTION REQUIRED'}
+                             </Badge>
+                             <span className="text-[9px] font-bold text-muted-foreground">
+                                {new Date(notice.created_at).toLocaleDateString()}
+                             </span>
+                          </div>
+                          
+                          <p className="text-[11px] font-black text-foreground mb-1">REF: {notice.complaint_id?.reference_number || 'N/A'}</p>
+                          <p className="text-xs font-bold text-muted-foreground italic mb-4 line-clamp-2">"{notice.message}"</p>
+                          
+                          {!notice.responded ? (
+                            <Button 
+                              onClick={() => { setSelectedNotice(notice); setNoticeModalOpen(true); }} 
+                              className="w-full h-10 bg-destructive text-white hover:bg-destructive/90 font-black uppercase text-[10px] tracking-widest shadow-glow-destructive"
+                            >
+                               Submit Proper Reason
+                            </Button>
+                          ) : (
+                            <div className="mt-2 p-2 bg-success/10 rounded-lg border border-success/20 text-success text-[10px] font-bold">
+                               <CheckCircle className="h-3 w-3 inline mr-1" /> Justification Submitted
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <div className="p-4 bg-secondary/30 border-t border-border/30">
+                     <p className="text-[10px] font-bold text-muted-foreground text-center">
+                        All statements are logged and forwarded to the Urban Command Center for review.
+                     </p>
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+          </div>
         </main>
 
         {/* RESOLUTION UPLOAD DIALOG */}

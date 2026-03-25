@@ -32,7 +32,7 @@ export default function LeaveStatus() {
 
   const handleDownload = (type: 'pdf' | 'jpg', certUrl: string) => {
     // In a real app, this would trigger a download. Here we open in new tab.
-    const url = `${import.meta.env.VITE_API_URL}${certUrl}`;
+    const url = `${import.meta.env.VITE_API_BASE_URL}${certUrl}`;
     window.open(url, '_blank');
   };
 

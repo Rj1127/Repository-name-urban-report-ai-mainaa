@@ -9,6 +9,9 @@ interface User {
   role: string;
   phone?: string | null;
   avatar?: string | null;
+  is_suspended?: boolean;
+  suspension_until?: string | Date | null;
+  suspension_letter?: string | null;
 }
 
 interface AuthContextType {
