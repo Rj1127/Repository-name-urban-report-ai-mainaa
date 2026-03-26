@@ -6,7 +6,7 @@ const assignmentSchema = new mongoose.Schema({
     assigned_at: { type: Date, default: Date.now },
     deadline: { type: Date, required: true },
     status: { type: String, enum: ["Assigned", "In Progress", "Resolved"], default: "Assigned" }
-});
+}, { timestamps: true });
 
 const Assignment = mongoose.model("Assignment", assignmentSchema);
 export default Assignment;

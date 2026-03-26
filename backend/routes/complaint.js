@@ -44,7 +44,9 @@ Do NOT provide any conversational filler. Return ONLY the JSON.
 
 const extractJSON = (text) => {
     try {
-        return JSON.parse(text);
+        // Remove markdown blocks if present
+        const cleanText = text.replace(/```json\n?|```/g, "").trim();
+        return JSON.parse(cleanText);
     } catch (e) {
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
@@ -52,9 +54,11 @@ const extractJSON = (text) => {
                 return JSON.parse(match[0]);
             } catch (e2) {
                 console.error("Failed to parse matched JSON segment:", match[0]);
+                throw new Error("AI response contained invalid JSON: " + e2.message);
             }
         }
-        throw new Error("Could not extract valid JSON from AI response");
+        console.error("AI Raw Response:", text);
+        throw new Error("Could not extract valid JSON from AI response. Please try again.");
     }
 };
 
@@ -74,6 +78,11 @@ const predictSeverity = (issueType) => {
 router.post("/", async (req, res) => {
     try {
         const { user_email, issue_type, description, latitude, longitude, address, image_url } = req.body;
+        
+        if (!user_email || !issue_type || !description) {
+            return res.status(400).json({ error: "Missing required fields: user_email, issue_type, and description are mandatory." });
+        }
+
         const user = await User.findOne({ email: user_email });
         if (!user) return res.status(400).json({ error: "User not found" });
 
@@ -199,6 +208,11 @@ router.post("/assign", async (req, res) => {
 router.post("/resolve", async (req, res) => {
     try {
         const { complaint_id, after_image, engineer_id } = req.body;
+
+        if (!complaint_id || !after_image || !engineer_id) {
+            return res.status(400).json({ error: "Missing required fields for resolution." });
+        }
+
         const complaint = await Complaint.findById(complaint_id);
         if (!complaint) return res.status(404).json({ error: "Complaint not found" });
 
@@ -248,9 +262,23 @@ router.post("/notice", async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET NOTICES FOR ENGINEER
-router.get("/notices/:engineer_id", async (req, res) => {
+// GET ALL NOTICES (For Admin review)
+router.get("/notices/all", async (req, res) => {
+    console.log("DEBUG: Hit /notices/all");
     try {
+        const notices = await Notice.find().populate("engineer_id", "name dept_name").populate("complaint_id", "reference_number status").sort({ created_at: -1 });
+        res.json(notices);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET NOTICES FOR ENGINEER (Strict ObjectId Match)
+router.get("/notices/:engineer_id", async (req, res) => {
+    console.log("DEBUG: Hit /notices/:id - ", req.params.engineer_id);
+    try {
+        const { isValidObjectId } = await import("mongoose");
+        if (!isValidObjectId(req.params.engineer_id)) {
+            return res.status(400).json({ error: "Invalid engineer_id format" });
+        }
         const notices = await Notice.find({ engineer_id: req.params.engineer_id }).populate("complaint_id", "reference_number status").sort({ created_at: -1 });
         res.json(notices);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -262,14 +290,6 @@ router.post("/notices/:notice_id/respond", async (req, res) => {
         const { reason } = req.body;
         await Notice.findByIdAndUpdate(req.params.notice_id, { reason, responded: true });
         res.json({ message: "Response submitted." });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET ALL NOTICES (For Admin review)
-router.get("/notices/all", async (req, res) => {
-    try {
-        const notices = await Notice.find().populate("engineer_id", "name dept_name").populate("complaint_id", "reference_number status").sort({ created_at: -1 });
-        res.json(notices);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -11,6 +11,19 @@ router.post("/apply", async (req, res) => {
     try {
         const { engineer_id, reason, duration_from, duration_to, proof_document } = req.body;
 
+        if (!engineer_id || !reason || !duration_from || !duration_to) {
+            return res.status(400).json({ error: "Missing required fields for leave application." });
+        }
+
+        const fromDate = new Date(duration_from);
+        const toDate = new Date(duration_to);
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+            return res.status(400).json({ error: "Invalid date format for duration_from or duration_to." });
+        }
+        if (toDate < fromDate) {
+            return res.status(400).json({ error: "duration_to cannot be earlier than duration_from." });
+        }
+
         const engineer = await User.findById(engineer_id);
         if (!engineer) return res.status(404).json({ error: "Engineer not found" });
 

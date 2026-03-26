@@ -21,6 +21,8 @@ import 'leaflet/dist/leaflet.css';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { LeaveRequestsList } from '@/components/admin/LeaveRequestsList';
+import DisciplineModule from '@/components/admin/DisciplineModule';
+import HeatmapModule from '@/components/admin/HeatmapModule';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -579,92 +581,11 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* 3. COMPLIANCE & DISCIPLINE terminal */}
-            {activeTab === 'discipline' && (
-              <div key="discipline" className="space-y-6">
-                <div className="flex items-center justify-between mb-2">
-                   <div>
-                      <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                        <Shield className="h-8 w-8 text-destructive" /> Compliance Terminal
-                      </h1>
-                      <p className="text-muted-foreground mt-1 text-sm font-bold uppercase tracking-tight">Review official justifications for resolution conflicts</p>
-                   </div>
-                   <div className="flex gap-4">
-                      <Card className="glass-panel px-6 py-2 border-destructive/20 bg-destructive/5 shadow-glow-sm">
-                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest leading-none">Pending Review</p>
-                        <p className="text-xl font-black text-destructive">{notices.filter(n => n.responded && n.admin_decision === 'Pending').length}</p>
-                      </Card>
-                   </div>
-                </div>
+            {/* 3. LIVE CITY HEATMAP & FLOOD INTELLIGENCE */}
+            {activeTab === 'heatmap' && <HeatmapModule />}
 
-                <div className="grid grid-cols-1 gap-6">
-                  {notices.filter(n => n.responded).length === 0 ? (
-                    <Card className="p-12 text-center text-muted-foreground bg-secondary/10 border-dashed border-2">
-                      <p className="font-bold uppercase tracking-widest text-xs">No explanations submitted for review</p>
-                    </Card>
-                  ) : (
-                    notices.filter(n => n.responded).map(notice => (
-                      <Card key={notice._id} className={`glass-panel border-l-4 transition-all hover:translate-x-1 ${notice.admin_decision === 'Pending' ? 'border-l-orange-500' : notice.admin_decision === 'Accepted' ? 'border-l-emerald-500' : 'border-l-destructive/50'}`}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="flex items-center gap-4">
-                              <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${notice.admin_decision === 'Pending' ? 'bg-orange-500/10 text-orange-500' : notice.admin_decision === 'Accepted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-destructive/10 text-destructive'}`}>
-                                {notice.engineer_id?.name?.charAt(0) || 'E'}
-                              </div>
-                              <div>
-                                <h3 className="font-black text-foreground uppercase tracking-tight">{notice.engineer_id?.name || "Unknown Engineer"}</h3>
-                                <p className="text-xs font-bold text-muted-foreground uppercase">{notice.engineer_id?.dept_name || "General Maintenance"}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full inline-block mb-2 shadow-sm border border-primary/20 tracking-widest">REF: {notice.complaint_id?.reference_number}</p>
-                              <Badge variant="outline" className={`block text-[10px] font-black tracking-widest px-3 py-1 border-2 ${notice.admin_decision === 'Pending' ? 'text-orange-500 border-orange-500/30 bg-orange-500/5' : notice.admin_decision === 'Accepted' ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5' : 'text-destructive border-destructive/30 bg-destructive/5'}`}>
-                                 {notice.admin_decision?.toUpperCase()}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                             <div className="p-4 bg-secondary/30 rounded-2xl text-sm font-medium border border-border/20 shadow-inner relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-2 opacity-10"><AlertTriangle className="h-12 w-12" /></div>
-                                <span className="text-[10px] font-black uppercase text-muted-foreground block mb-2 tracking-widest border-b border-border/10 pb-1">Issued Notice:</span>
-                                <p className="italic text-muted-foreground">"{notice.message}"</p>
-                             </div>
-                             <div className="p-4 bg-primary/5 rounded-2xl text-sm font-bold border border-primary/20 shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-2 opacity-10"><Edit className="h-12 w-12 text-primary" /></div>
-                                <span className="text-[10px] font-black uppercase text-primary block mb-2 tracking-widest border-b border-primary/10 pb-1">Engineer Justification:</span>
-                                <p className="text-foreground leading-relaxed">{notice.reason}</p>
-                             </div>
-                          </div>
-
-                          <div className="flex justify-between items-center pt-5 border-t border-border/40">
-                             <div className="flex items-center gap-2 text-muted-foreground">
-                               <Clock className="h-4 w-4" />
-                               <span className="text-[11px] font-bold italic">Submitted: {new Date(notice.created_at).toLocaleString()}</span>
-                             </div>
-                             <div className="flex gap-3">
-                               {notice.admin_decision === 'Pending' && (
-                                 <Button onClick={() => { setSelectedNotice(notice); setReviewModalOpen(true); }} className="h-10 gradient-primary font-black uppercase text-xs tracking-widest px-8 shadow-glow transition-all active:scale-95">
-                                   Issue Final Ruling
-                                 </Button>
-                               )}
-                               {notice.admin_decision === 'Rejected' && notice.suspension_letter && (
-                                  <Button variant="outline" onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL}${notice.suspension_letter}`)} className="h-10 border-destructive/30 hover:bg-destructive/10 text-xs font-black text-destructive uppercase tracking-widest px-6 shadow-sm">
-                                     Download Order
-                                  </Button>
-                               )}
-                               {notice.admin_decision === 'Accepted' && (
-                                  <Badge className="bg-emerald-500/20 text-emerald-600 border-none font-black text-[10px] px-6 h-10 flex items-center uppercase tracking-widest shadow-sm">CASE HANDLED</Badge>
-                               )}
-                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+            {/* 4. COMPLIANCE & DISCIPLINE (New Module) */}
+            {activeTab === 'discipline' && <DisciplineModule />}
 
             {/* 4. ENGINEER DETAILS */}
             {activeTab === 'engineers' && (
