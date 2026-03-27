@@ -277,8 +277,49 @@ export default function ResolverDashboard() {
 
             {/* RIGHT COLUMN: DISCIPLINARY ACTION CENTER */}
             <div className="lg:col-span-4 space-y-6">
-              <div className="sticky top-8">
-                <div className="flex items-center justify-between mb-4">
+              <div className="sticky top-8 space-y-4">
+
+                {/* --- OFFICIAL SUSPENSION NOTICE CARD ---
+                    Appears ONLY when an admin has issued a suspension order PDF.
+                    Engineer must acknowledge/download the suspension letter. */}
+                {user?.suspension_letter && (
+                  <div className="p-5 rounded-2xl border-2 border-destructive bg-destructive/10 shadow-glow-destructive animate-pulse">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-10 w-10 rounded-full bg-destructive flex items-center justify-center shrink-0">
+                        <ShieldAlert className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-destructive uppercase tracking-widest">Official Order Issued</p>
+                        <h3 className="text-lg font-black text-foreground">Account Suspended</h3>
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-muted-foreground mb-4 leading-relaxed">
+                      A formal suspension order has been issued against your account by the CivicDrishti Bharat Administration. 
+                      Your login access has been revoked. Download the official PDF order below.
+                    </p>
+                    {/* Active Until date */}
+                    {user?.suspension_until && (
+                      <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/30 mb-4">
+                        <p className="text-[10px] font-black text-destructive uppercase">Suspended Until:</p>
+                        <p className="text-sm font-black text-foreground">
+                          {new Date(user.suspension_until).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    )}
+                    {/* Download PDF Suspension Order */}
+                    <Button
+                      className="w-full h-12 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-wider text-sm"
+                      onClick={() => {
+                        const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+                        window.open(`${base}${user.suspension_letter}`, '_blank');
+                      }}
+                    >
+                      <FileText className="mr-2 h-5 w-5" /> Download Suspension Order (PDF)
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
                   <h2 className="text-lg font-black uppercase text-destructive flex items-center gap-2">
                     <ShieldAlert className="h-5 w-5" /> Disciplinary Action Center
                   </h2>
@@ -329,8 +370,24 @@ export default function ResolverDashboard() {
                                Submit Proper Reason
                             </Button>
                           ) : (
-                            <div className="mt-2 p-2 bg-success/10 rounded-lg border border-success/20 text-success text-[10px] font-bold">
-                               <CheckCircle className="h-3 w-3 inline mr-1" /> Justification Submitted
+                            // If responded but admin rejected (suspension_letter exists in notice) show download
+                            <div className="mt-2 space-y-2">
+                              <div className="p-2 bg-success/10 rounded-lg border border-success/20 text-success text-[10px] font-bold">
+                                <CheckCircle className="h-3 w-3 inline mr-1" /> Justification Submitted
+                              </div>
+                              {notice.suspension_letter && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full h-8 text-[10px] border-destructive/40 text-destructive hover:bg-destructive/10 font-bold"
+                                  onClick={() => {
+                                    const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+                                    window.open(`${base}${notice.suspension_letter}`, '_blank');
+                                  }}
+                                >
+                                  <FileText className="h-3 w-3 mr-1" /> View Suspension Order
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>

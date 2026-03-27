@@ -22,6 +22,38 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
   const [result, setResult] = useState<any>(null);
   const [rejected, setRejected] = useState<string | null>(null);
 
+  // --- Modular Code Structure: Image Compression Utility ---
+  // Compresses uploaded images to prevent payload size issues and ensure successful fetching later.
+  const compressImage = (selectedFile: File, callback: (base64: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1000; // Optimal width for storage and AI processing
+        let scaleSize = 1;
+        if (img.width > MAX_WIDTH) {
+          scaleSize = MAX_WIDTH / img.width;
+        }
+        
+        canvas.width = img.width * scaleSize;
+        canvas.height = img.height * scaleSize;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          // Compress to JPEG with 0.7 quality to drastically reduce base64 string size
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          callback(compressedBase64);
+        }
+      };
+      if (event.target?.result) {
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(selectedFile);
+  };
+
   // WebRTC Camera State
   const [useWebcam, setUseWebcam] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -76,9 +108,11 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
     setFile(f);
     setResult(null);
     setRejected(null);
-    const reader = new FileReader();
-    reader.onloadend = () => setPreview(reader.result as string);
-    reader.readAsDataURL(f);
+    
+    // Utilize modular compression to fix huge base64 strings breaking the DB/UI fetching
+    compressImage(f, (compressedBase64) => {
+      setPreview(compressedBase64);
+    });
   };
 
   const analyzeImage = async () => {
@@ -179,7 +213,24 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
         </motion.div>
       )}
 
-      {preview && !useWebcam && (
+      {/* Adding modular proper error rendering so the citizen page shows why analyzing failed */}
+      {preview && rejected && !useWebcam && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl max-w-full overflow-hidden">
+          <p className="text-sm font-bold text-red-500 flex items-start gap-2 mb-3">
+            <X className="h-5 w-5 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{rejected}</span>
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => { setPreview(null); setFile(null); setResult(null); setRejected(null); }}
+            className="w-full border-red-500/30 text-red-500 hover:bg-red-500/10"
+          >
+            Clear and Try Again
+          </Button>
+        </motion.div>
+      )}
+
+      {preview && !rejected && !useWebcam && (
         <Button
           variant="ghost"
           size="sm"

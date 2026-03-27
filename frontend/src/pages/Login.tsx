@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
-import { Loader2, Shield, ArrowRight } from 'lucide-react';
+import { Loader2, Shield, ArrowRight, ShieldAlert } from 'lucide-react';
 
 const getDashboardForRole = (role: string | null) => {
   if (role === 'admin') return '/admin';
@@ -23,6 +23,8 @@ export default function Login() {
   const [step, setStep] = useState<'login' | 'otp'>('login');
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
   const [loading, setLoading] = useState(false);
+  // Track suspension state for showing a dedicated error UI
+  const [suspendedError, setSuspendedError] = useState<string | null>(null);
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
@@ -62,6 +64,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
+      setSuspendedError(null); // reset on each attempt
       const res = await login(email, password, step === 'otp' ? otp : undefined);
 
       if (res && res.requireOtp) {
@@ -74,7 +77,12 @@ export default function Login() {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       navigate(getDashboardForRole(storedUser.role || 'citizen'));
     } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+      // Detect suspension-related errors from the backend (403)
+      if (err.message && (err.message.includes('Account Suspended') || err.message.includes('suspended'))) {
+        setSuspendedError(err.message);
+      } else {
+        toast.error(err.message || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +112,23 @@ export default function Login() {
               <p className="text-sm text-muted-foreground mt-1">Sign in to your CivicDrishti Bharat account</p>
             </CardHeader>
             <CardContent>
+              {/* --- SUSPENSION NOTIFICATION BLOCK ---
+                  Displays when a suspended engineer attempts to log in.
+                  The block shows the full suspension message from the backend. */}
+              {suspendedError && (
+                <div className="mb-5 p-4 rounded-xl border-2 border-destructive bg-destructive/10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <ShieldAlert className="h-6 w-6 text-destructive shrink-0" />
+                    <p className="text-sm font-black text-destructive uppercase tracking-wider">Account Suspended</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                    {suspendedError.replace('⛔ ', '')}
+                  </p>
+                  <p className="text-[10px] text-destructive font-bold mt-3 uppercase tracking-widest">
+                    Contact your administrator for the official suspension order.
+                  </p>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {step === 'login' ? (
                   <>

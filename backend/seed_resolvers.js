@@ -10,7 +10,7 @@ async function seed() {
     const resolvers = [
       {
         name: "Ravi Kumar",
-        email: "ravi@smartnagar.gov.in",
+        email: "ravi@civicdrishtibharat.gov.in",
         password: "hashedpassword",
         role: "resolver",
         dept_name: "Roads & Highways",
@@ -20,7 +20,7 @@ async function seed() {
       },
       {
         name: "Suresh Singh",
-        email: "suresh@smartnagar.gov.in",
+        email: "suresh@civicdrishtibharat.gov.in",
         password: "hashedpassword",
         role: "resolver",
         dept_name: "Sanitation",
@@ -30,7 +30,7 @@ async function seed() {
       },
       {
         name: "Amit Sharma",
-        email: "amit@smartnagar.gov.in",
+        email: "amit@civicdrishtibharat.gov.in",
         password: "hashedpassword",
         role: "resolver",
         dept_name: "Water Supply",

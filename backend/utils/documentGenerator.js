@@ -29,10 +29,17 @@ export const generateAcknowledgementSlip = async (complaint, user) => {
     // 2. Generate PDF
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const stream = fs.createWriteStream(pdfPath);
+    
+    // Create a promise to wait for the PDF to be fully written
+    const pdfPromise = new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on('error', reject);
+    });
+
     doc.pipe(stream);
 
     // Header
-    doc.fontSize(20).text('SMART NAGAR REPORTING PORTAL (SNRP)', { align: 'center' });
+    doc.fontSize(20).text('CIVICDRISHTI BHARAT', { align: 'center' });
     doc.fontSize(24).fillColor('#2563eb').text('COMLAINT ACKNOWLEDGEMENT RECEIPT', { align: 'center' });
     doc.moveDown();
 
@@ -61,6 +68,7 @@ export const generateAcknowledgementSlip = async (complaint, user) => {
     doc.opacity(1);
 
     doc.end();
+    await pdfPromise; // Ensure PDF is saved before proceeding
 
     // 3. Generate JPG using Puppeteer
     const html = `
@@ -88,18 +96,29 @@ export const generateAcknowledgementSlip = async (complaint, user) => {
                     <div class="item"><label>Issue Type</label><p>${complaint.issue_type}</p></div>
                     <div class="item"><label>Location</label><p>${complaint.address || 'N/A'}</p></div>
                 </div>
-                <div class="watermark">SNRP OFFICIAL</div>
+                <div class="watermark">CDB OFFICIAL</div>
             </div>
         </body>
         </html>
     `;
 
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setViewport({ width: 800, height: 600 });
-    await page.setContent(html);
-    await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 90 });
-    await browser.close();
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 800, height: 600 });
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 90 });
+    } catch (err) {
+        console.error("Puppeteer Screenshot Failed:", err);
+        // We don't throw hered to avoid failing the whole complaint submission
+        // if just the JPG generation fails, but we log it.
+    } finally {
+        if (browser) await browser.close();
+    }
 
     return { pdf: `/documents/slips/${refId}.pdf`, jpg: `/documents/slips/${refId}.jpg` };
 };
@@ -115,6 +134,12 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
     // 1. Generate PDF
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 50 });
     const stream = fs.createWriteStream(pdfPath);
+    
+    const pdfPromise = new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on('error', reject);
+    });
+
     doc.pipe(stream);
 
     // Border
@@ -122,7 +147,7 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
 
     doc.moveDown(2);
     doc.fontSize(30).text('LEAVE APPROVAL CERTIFICATE', { align: 'center' });
-    doc.fontSize(14).text('Smart Nagar Reporting Portal (SNRP)', { align: 'center' });
+    doc.fontSize(14).text('CivicDrishti Bharat', { align: 'center' });
     doc.moveDown(2);
 
     doc.fontSize(16).text('This is to certify that the leave application of:', { align: 'center' });
@@ -140,9 +165,10 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
     // Signature Area
     doc.fontSize(12).text('Digital Signature of Admin', 100, 480);
     doc.fontSize(18).font('Times-Italic').text(adminName, 100, 500); // Stylized Signature
-    doc.font('Helvetica').fontSize(12).text('Officer-in-Charge, SNRP', 100, 520);
+    doc.font('Helvetica').fontSize(12).text('Officer-in-Charge, CDB', 100, 520);
 
     doc.end();
+    await pdfPromise;
 
     // 2. Generate JPG
     const html = `
@@ -161,7 +187,7 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
         <body>
             <div class="cert">
                 <h1>LEAVE APPROVAL CERTIFICATE</h1>
-                <p>Smart Nagar Reporting Portal</p>
+                <p>CivicDrishti Bharat</p>
                 <div style="margin-top: 40px;">
                     <p class="details">This is to certify that leave for</p>
                     <p class="name">${user.name}</p>
@@ -177,19 +203,29 @@ export const generateLeaveCertificate = async (leave, user, adminName = "System 
         </html>
     `;
 
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1000, height: 700 });
-    await page.setContent(html);
-    await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 90 });
-    await browser.close();
+    let browser;
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1000, height: 700 });
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 90 });
+    } catch (err) {
+        console.error("Puppeteer Certificate Screenshot Failed:", err);
+    } finally {
+        if (browser) await browser.close();
+    }
 
     return { pdf: `/documents/certificates/${certId}.pdf`, jpg: `/documents/certificates/${certId}.jpg`, certId };
 };
 /**
  * Generates an Official Suspension Letter in PDF format
+ * IMPORTANT: awaits the stream finish event to ensure file is written before returning
  */
-export const generateSuspensionLetter = async (engineer, notice, adminNotes, days = 7) => {
+export const generateSuspensionLetter = async (engineer, notice, adminNotes, days = 30) => {
     const suspId = `SUSP-${Date.now()}`;
     const pdfPath = path.join(CERTIFICATES_DIR, `${suspId}.pdf`);
     const untilDate = new Date();
@@ -197,59 +233,101 @@ export const generateSuspensionLetter = async (engineer, notice, adminNotes, day
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const stream = fs.createWriteStream(pdfPath);
+
+    // Wait for the PDF to be fully written to disk before returning
+    const pdfFinished = new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on('error', reject);
+    });
     doc.pipe(stream);
 
-    // Header with Red Accents
-    doc.fontSize(20).fillColor('#991b1b').text('SMART NAGAR REPORTING PORTAL', { align: 'center' });
-    doc.fontSize(24).font('Helvetica-Bold').text('OFFICIAL SUSPENSION ORDER', { align: 'center' });
-    doc.moveDown();
-
-    doc.moveTo(50, 150).lineTo(545, 150).strokeColor('#991b1b').stroke();
-    doc.moveDown();
-
-    // Body
-    doc.fillColor('#000').font('Helvetica').fontSize(12);
-    doc.text(`Order Number: ${suspId}`, { align: 'right' });
-    doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, { align: 'right' });
-    doc.moveDown(2);
-
-    doc.text('To,');
-    doc.font('Helvetica-Bold').text(engineer.name);
-    doc.font('Helvetica').text(`Employee ID: ${engineer._id}`);
-    doc.text(`Department: ${engineer.dept_name || 'Operations'}`);
-    doc.moveDown(2);
-
-    doc.font('Helvetica-Bold').text('Subject: NOTICE OF TEMPORARY SUSPENSION FROM DUTY');
-    doc.moveDown();
-
-    doc.font('Helvetica').text(`This is a formal disciplinary order issued following the review of your explanation regarding the resolution conflict for Complaint Ref: ${notice.complaint_id?.reference_number || 'N/A'}.`);
-    doc.moveDown();
-
-    doc.text('Upon review by the Urban Command Center, your justification was found to be ');
-    doc.font('Helvetica-Bold').text('NOT SATISFACTORY', { continued: true });
-    doc.font('Helvetica').text(' for the following reasons:');
+    // --- HEADER ---
+    doc.fontSize(20).fillColor('#991b1b').text('CIVICDRISHTI BHARAT (CDB)', { align: 'center' });
+    doc.fontSize(10).fillColor('#666').text('Urban Governance & Accountability Division', { align: 'center' });
     doc.moveDown(0.5);
-    doc.font('Helvetica-Oblique').text(`"${adminNotes || 'Professional negligence/dishonesty detected in field report.'}"`, { indent: 20 });
+    doc.fontSize(24).fillColor('#991b1b').font('Helvetica-Bold').text('OFFICIAL SUSPENSION ORDER', { align: 'center' });
+    doc.moveDown(0.3);
+
+    // Red horizontal rule
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#991b1b').lineWidth(2).stroke();
     doc.moveDown();
 
-    doc.font('Helvetica-Bold').text('CONSEQUENCES:');
-    doc.font('Helvetica').list([
-        `Immediate suspension from the portal for a period of ${days} days.`,
-        `Access to new assignments is blocked until ${untilDate.toLocaleDateString()}.`,
-        `All current and pending bonuses are withheld for the current cycle.`,
-        `This incident will be permanently recorded in your professional conduct file.`
-    ]);
+    // --- ORDER METADATA ---
+    doc.fillColor('#000').font('Helvetica').fontSize(11);
+    doc.text(`Order Number: ${suspId}`, { align: 'right' });
+    doc.text(`Date of Issue: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, { align: 'right' });
+    doc.text(`Effective Until: ${untilDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, { align: 'right' });
     doc.moveDown(2);
 
-    doc.text('By Order of,');
-    doc.moveDown();
-    doc.font('Helvetica-Bold').text('The Municipal Commissioner');
-    doc.text('Smart Nagar Urban Administration');
+    // --- ADDRESSEE ---
+    doc.text('To,');
+    doc.font('Helvetica-Bold').fontSize(13).text(engineer.name || 'N/A');
+    doc.font('Helvetica').fontSize(11);
+    doc.text(`Employee ID: ${engineer._id}`);
+    doc.text(`Department: ${engineer.dept_name || 'Operations'}`);
+    doc.text(`Contact: ${engineer.email || 'N/A'}`);
+    doc.moveDown(2);
 
-    // Footer Warning
-    doc.fontSize(10).fillColor('#991b1b').text('This is an electronically generated order and does not require a physical signature.', 50, 700, { align: 'center' });
+    // --- SUBJECT ---
+    doc.font('Helvetica-Bold').fontSize(12).text('Subject: NOTICE OF TEMPORARY SUSPENSION FROM DUTY', { underline: true });
+    doc.moveDown();
+
+    // --- BODY ---
+    doc.font('Helvetica').fontSize(11);
+    doc.text('Dear Officer,');
+    doc.moveDown(0.5);
+    doc.text(
+        `This is a formal disciplinary order issued by the Urban Command Center of CivicDrishti Bharat following the review of your explanation submitted in response to the disciplinary notice raised for Complaint Reference: ${notice.complaint_id?.reference_number || 'N/A'} (Issue Type: ${notice.complaint_id?.issue_type?.replace('_', ' ') || 'N/A'}).`,
+        { lineGap: 4 }
+    );
+    doc.moveDown();
+
+    doc.text('After careful review, your submitted justification was found to be:');
+    doc.moveDown(0.3);
+    doc.font('Helvetica-Bold').fillColor('#991b1b').text('   NOT SATISFACTORY');
+    doc.moveDown(0.3);
+    doc.fillColor('#000').font('Helvetica').text('Grounds for Rejection:');
+    doc.font('Helvetica-Oblique').fontSize(10)
+        .text(`   "${adminNotes || 'Professional negligence or dishonesty detected in field report submission.'}"`, { indent: 10, lineGap: 3 });
+    doc.moveDown();
+
+    // --- CONSEQUENCES ---
+    doc.font('Helvetica-Bold').fontSize(12).text('DISCIPLINARY CONSEQUENCES:');
+    doc.font('Helvetica').fontSize(11);
+    doc.list([
+        `Your account has been IMMEDIATELY SUSPENDED for a period of ${days} days.`,
+        `Login access to the CivicDrishti Bharat portal is BLOCKED until ${untilDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}.`,
+        'Access to new task assignments is blocked for the suspension duration.',
+        'All pending performance bonuses for the current cycle are withheld.',
+        'This incident is permanently recorded in your professional conduct file.',
+        'Further violations may result in permanent termination of access.'
+    ], { lineGap: 3 });
+    doc.moveDown(2);
+
+    // --- APPEAL ---
+    doc.font('Helvetica-Bold').fontSize(11).text('APPEAL PROCESS:');
+    doc.font('Helvetica').fontSize(10)
+        .text('You may file a formal appeal to the District Municipal Commissioner within 7 working days of this notice. Appeals must be accompanied by documentary evidence.', { lineGap: 3 });
+    doc.moveDown(2);
+
+    // --- SIGNATURE ---
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#ccc').lineWidth(1).stroke();
+    doc.moveDown();
+    doc.font('Helvetica').fontSize(11).text('By Order of,');
+    doc.moveDown(0.5);
+    doc.font('Helvetica-Bold').fontSize(13).text('The Municipal Commissioner');
+    doc.font('Helvetica').fontSize(11).text('CivicDrishti Bharat Urban Administration');
+    doc.text(`Issued: ${new Date().toLocaleString('en-IN')}}`);
+    doc.moveDown();
+
+    // --- FOOTER ---
+    doc.fontSize(9).fillColor('#991b1b')
+        .text('This is an electronically generated order and is legally binding. No physical signature is required.', 50, 720, { align: 'center' });
 
     doc.end();
+    // CRITICAL: Wait for PDF to be fully saved before returning
+    await pdfFinished;
+
     return { pdf: `/documents/certificates/${suspId}.pdf`, suspId, untilDate };
 };
 
@@ -393,7 +471,7 @@ export const generateDisciplinaryJPG = async (engineer, notice, adminNotes, days
                 <div class="qr-placeholder"></div>
                 <div class="header">
                     <h1>Goverance Accountability Office</h1>
-                    <p>SMART NAGAR REPORTING PORTAL (SNRP)</p>
+                    <p>CIVICDRISHTI BHARAT</p>
                 </div>
                 
                 <h2 class="main-title">OFFICIAL TERMINAL<br>DISCIPLINARY BLOCK</h2>
@@ -435,12 +513,22 @@ export const generateDisciplinaryJPG = async (engineer, notice, adminNotes, days
         </html>
     `;
 
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setViewport({ width: 850, height: 850 });
-    await page.setContent(html);
-    await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 95 });
-    await browser.close();
+    let jpgBrowser;
+    try {
+        jpgBrowser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        });
+        const jpgPage = await jpgBrowser.newPage();
+        await jpgPage.setViewport({ width: 850, height: 850 });
+        await jpgPage.setContent(html, { waitUntil: 'domcontentloaded' });
+        await jpgPage.screenshot({ path: jpgPath, type: 'jpeg', quality: 90 });
+    } catch (err) {
+        console.error('DisciplinaryJPG generation failed (non-fatal):', err.message);
+        // Non-fatal: JPG failure won't crash the whole suspension flow
+    } finally {
+        if (jpgBrowser) await jpgBrowser.close();
+    }
 
     return { jpg: `/documents/certificates/${noticeId}.jpeg` };
 };

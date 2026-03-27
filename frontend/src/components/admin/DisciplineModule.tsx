@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Shield, Users, AlertTriangle, CheckCircle, 
-  Search, MoreVertical, Eye, 
+  Search, MoreVertical, Eye, FileText,
   AlertOctagon, Ban, History, Download, 
   Clock, Info, RefreshCw
 } from 'lucide-react';
@@ -132,6 +132,14 @@ export default function DisciplineModule() {
     }
   };
 
+  // State to manage the two-step "Not Satisfied" flow
+  const [pendingRejectionNoticeId, setPendingRejectionNoticeId] = useState<string | null>(null);
+  const [suspensionPdfUrl, setSuspensionPdfUrl] = useState<string | null>(null);
+  const [pdfOpenedConfirmed, setPdfOpenedConfirmed] = useState(false);
+
+  // --- Handle review of engineer justification ---
+  // 'accept' path: Re-assigns complaint to another engineer automatically.
+  // 'reject' path: Generates 30-day suspension PDF, forces admin to view it, then locks the engineer account.
   const handleReviewNotice = async (noticeId: string, action: 'accept' | 'reject', notes: string, days: number) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -141,12 +149,41 @@ export default function DisciplineModule() {
         body: JSON.stringify({ action, notes, suspension_days: days })
       });
       if (!res.ok) throw new Error("Review submission failed");
-      toast.success(action === 'accept' ? "Justification Accepted" : "Justification Rejected & Suspended");
-      setDetailsModalOpen(false);
-      fetchDisciplineData();
+      const data = await res.json();
+      
+      if (action === 'accept') {
+        toast.success("✅ Justification Accepted. Complaint auto-reassigned to another engineer.");
+        setDetailsModalOpen(false);
+        fetchDisciplineData();
+      } else {
+        // Store the PDF URL from the response for the mandatory view step
+        const pdfPath = data.suspension_letter;
+        const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+        setSuspensionPdfUrl(`${backendBase}${pdfPath}`);
+        setPendingRejectionNoticeId(noticeId);
+        toast.warning("⚠️ Suspension order generated. You MUST review the PDF report before confirming.");
+      }
     } catch (err: any) {
       toast.error(err.message);
     }
+  };
+
+  // Called when admin opens the PDF report link — unlocks the confirm button
+  const handleOpenSuspensionPdf = () => {
+    if (suspensionPdfUrl) {
+      window.open(suspensionPdfUrl, '_blank');
+      setPdfOpenedConfirmed(true);
+    }
+  };
+
+  // Final confirmation after the admin has viewed the PDF
+  const handleConfirmSuspension = () => {
+    setPendingRejectionNoticeId(null);
+    setSuspensionPdfUrl(null);
+    setPdfOpenedConfirmed(false);
+    setDetailsModalOpen(false);
+    fetchDisciplineData();
+    toast.error("🚫 Engineer access permanently blocked. 30-day suspension enforced.");
   };
 
   const openDetails = (engineer: Engineer) => {
@@ -442,12 +479,31 @@ export default function DisciplineModule() {
                                        <img src={log.evidence_image} alt="Site Proof" className="w-full h-32 object-cover" />
                                      </div>
                                    )}
-                                   {log.admin_decision === 'Pending' && (
-                                     <div className="flex gap-2 mt-4">
-                                       <Button size="sm" onClick={() => handleReviewNotice(log._id, 'accept', "Justification approved.", 0)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-[10px]">SATISFY</Button>
-                                       <Button size="sm" onClick={() => handleReviewNotice(log._id, 'reject', "Justification not satisfactory.", 7)} variant="destructive" className="flex-1 font-bold h-8 text-[10px]">NOT SATISFY</Button>
-                                     </div>
-                                   )}
+                                    {log.admin_decision === 'Pending' && (
+                                      // --- Two-button Satisfy / Not Satisfy decision panel ---
+                                      <div className="space-y-3 mt-4">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Admin Decision Required:</p>
+                                        <div className="flex gap-2">
+                                          {/* SATISFIED: Accept justification and auto-reassign complaint */}
+                                          <Button 
+                                            size="sm" 
+                                            onClick={() => handleReviewNotice(log._id, 'accept', "Justification approved. Complaint re-assigned to a different engineer.", 0)} 
+                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-[10px] uppercase tracking-wider"
+                                          >
+                                            ✅ Satisfied
+                                          </Button>
+                                          {/* NOT SATISFIED: Trigger suspension flow + PDF */}
+                                          <Button 
+                                            size="sm" 
+                                            onClick={() => handleReviewNotice(log._id, 'reject', "Justification not satisfactory. 30-day mandatory suspension enforced.", 30)} 
+                                            variant="destructive" 
+                                            className="flex-1 font-bold h-9 text-[10px] uppercase tracking-wider shadow-glow-destructive"
+                                          >
+                                            ❌ Not Satisfied
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
                                  </div>
                                )}
                                <div className="flex justify-between items-center text-[10px] font-bold mt-3">
@@ -484,6 +540,84 @@ export default function DisciplineModule() {
                 <Button onClick={() => setDetailsModalOpen(false)} className="rounded-xl px-8 font-black uppercase text-xs tracking-widest gradient-primary text-white">Close Dashboard</Button>
              </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- MANDATORY SUSPENSION PDF REVIEW MODAL ---
+          This modal forces the admin to open and read the suspension PDF 
+          BEFORE the suspension is confirmed as final. The "Confirm" button 
+          only becomes active after the PDF has been opened. */}
+      <Dialog open={!!pendingRejectionNoticeId} onOpenChange={() => {/* blocked: must confirm */}}>
+        <DialogContent className="sm:max-w-[520px] glass-strong border-destructive/40 shadow-elevated">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-destructive/10 flex items-center justify-center">
+                <Ban className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black text-destructive uppercase tracking-tight">
+                  Suspension Order Generated
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">30-Day Mandatory Suspension — CivicDrishti Bharat</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Step 1: Open PDF */}
+            <div className={`p-5 rounded-2xl border-2 transition-all ${pdfOpenedConfirmed ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-destructive/30 bg-destructive/5'}`}>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">
+                Step 1: Read Official Suspension Report (Mandatory)
+              </p>
+              <Button
+                onClick={handleOpenSuspensionPdf}
+                className={`w-full h-12 font-black uppercase tracking-wider text-sm ${pdfOpenedConfirmed ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-destructive text-white hover:bg-destructive/90 animate-pulse'}`}
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                {pdfOpenedConfirmed ? '✅ Report Opened & Reviewed' : '📄 Open Suspension PDF Report'}
+              </Button>
+              {!pdfOpenedConfirmed && (
+                <p className="text-[10px] text-destructive font-bold mt-2 text-center">
+                  ⚠️ You must open and read the PDF report before confirming.
+                </p>
+              )}
+            </div>
+
+            {/* Step 2: Confirm Suspension (only enabled after PDF opened) */}
+            <div className={`p-5 rounded-2xl border-2 transition-all ${pdfOpenedConfirmed ? 'border-destructive/40 bg-destructive/5' : 'border-border/20 bg-secondary/10 opacity-40'}`}>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-3">
+                Step 2: Confirm Final Suspension Action
+              </p>
+              <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 mb-4">
+                <p className="text-xs text-destructive font-bold leading-relaxed">
+                  🚫 This action will: Block engineer login for 30 days · Mark engineer as suspended · Auto-reassign the complaint
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!pdfOpenedConfirmed}
+                  onClick={() => {
+                    // Cancel: reset state, go back to details
+                    setPendingRejectionNoticeId(null);
+                    setSuspensionPdfUrl(null);
+                    setPdfOpenedConfirmed(false);
+                  }}
+                  className="flex-1 font-bold border-border/50"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={!pdfOpenedConfirmed}
+                  onClick={handleConfirmSuspension}
+                  className="flex-1 h-10 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest text-xs shadow-glow-destructive"
+                >
+                  🔒 Confirm Suspension
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -8,6 +8,9 @@ import Notice from "../models/Notice.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { generateAcknowledgementSlip } from "../utils/documentGenerator.js";
 
+// --- AI Initialization ---
+// The model is initialized with the API key from .env. 
+// Standard keys start with 'AIzaSy'.
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
@@ -330,13 +333,17 @@ router.post("/notices/:notice_id/review", async (req, res) => {
             
             res.json({ message: "Explanation accepted. Complaint reset for re-assignment." });
         } else {
+            // --- REJECT: Generate 30-day suspension documents and disable engineer login ---
             const { generateSuspensionLetter, generateDisciplinaryJPG } = await import("../utils/documentGenerator.js");
             
-            // Generate PDF Suspension Letter
-            const suspData = await generateSuspensionLetter(notice.engineer_id, notice, notes, suspension_days || 7);
+            // Always enforce 30 days for rejection (1 month mandatory suspension)
+            const MANDATORY_SUSPENSION_DAYS = 30;
             
-            // Generate JPG Disciplinary Notice (Karan Batao)
-            const jpgNotice = await generateDisciplinaryJPG(notice.engineer_id, notice, notes, suspension_days || 7);
+            // Generate PDF Suspension Letter (30 days)
+            const suspData = await generateSuspensionLetter(notice.engineer_id, notice, notes, MANDATORY_SUSPENSION_DAYS);
+            
+            // Generate JPG Disciplinary Notice
+            const jpgNotice = await generateDisciplinaryJPG(notice.engineer_id, notice, notes, MANDATORY_SUSPENSION_DAYS);
 
             await Notice.findByIdAndUpdate(req.params.notice_id, { 
                 admin_decision: "Rejected", 
@@ -345,13 +352,16 @@ router.post("/notices/:notice_id/review", async (req, res) => {
                 disciplinary_notice_url: jpgNotice.jpg
             });
 
-            // Block Engineer & Re-assign Complaint
+            // --- Block Engineer: Suspend + DISABLE LOGIN as punishment ---
             await User.findByIdAndUpdate(notice.engineer_id._id, { 
                 is_suspended: true, 
                 suspension_until: suspData.untilDate, 
                 suspension_letter: suspData.pdf,
                 disciplinary_notice_url: jpgNotice.jpg,
-                activity_status: "On Leave" 
+                activity_status: "On Leave",
+                // These two fields enforce the login block
+                login_disabled: true,
+                login_disabled_reason: `Suspension Order: ${suspData.suspId}. Justification rejected by admin. Account blocked until ${suspData.untilDate?.toLocaleDateString()}.`
             });
 
             // Re-assign Complaint (reset to New, exclude current engineer)
@@ -362,7 +372,11 @@ router.post("/notices/:notice_id/review", async (req, res) => {
             });
             await Assignment.deleteMany({ complaint_id: notice.complaint_id._id });
 
-            res.json({ message: "Explanation rejected. Engineer suspended and complaint reset." });
+            res.json({ 
+                message: "Explanation rejected. Engineer suspended for 30 days and login blocked.",
+                suspension_letter: suspData.pdf,
+                disciplinary_notice: jpgNotice.jpg
+            });
         }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -374,11 +388,26 @@ router.post("/analyze-image", async (req, res) => {
         if (!imageBase64) return res.status(400).json({ error: "No image provided" });
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
-        const result = await model.generateContent([MASTER_PROMPT, imagePart]);
-        const response = await result.response;
-        const text = response.text().trim();
-        try { const parsed = extractJSON(text); res.json(parsed); } catch (e) { res.status(500).json({ error: "AI formatting error" }); }
-    } catch (err) { res.status(500).json({ error: "AI Analysis Failed: " + err.message }); }
+        
+        try { 
+            const result = await model.generateContent([MASTER_PROMPT, imagePart]);
+            const response = await result.response;
+            const text = response.text().trim();
+            const parsed = extractJSON(text); 
+            res.json(parsed); 
+        } catch (e) { 
+            console.error("AI JSON Parse/Generation Error:", e);
+            const errorMsg = e.message || "";
+            if (errorMsg.includes("API key not valid")) {
+                res.status(401).json({ error: "CivicDrishti AI Error: The configured API key is invalid. Please check your .env file and restart the server." });
+            } else {
+                res.status(500).json({ error: "CivicDrishti AI Analysis Failed: " + errorMsg }); 
+            }
+        }
+    } catch (err) { 
+        console.error("Internal Server Error in Analyze-Image Route:", err);
+        res.status(500).json({ error: "Server error during analysis: " + err.message });
+    }
 });
 
 // CLOSE COMPLAINT (Admin)

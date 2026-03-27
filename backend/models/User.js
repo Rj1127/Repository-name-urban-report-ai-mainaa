@@ -18,7 +18,10 @@ const userSchema = new mongoose.Schema({
     is_suspended: { type: Boolean, default: false },
     suspension_until: { type: Date, default: null },
     suspension_letter: { type: String, default: null },
-    disciplinary_notice_url: { type: String, default: null }
+    disciplinary_notice_url: { type: String, default: null },
+    // --- Disciplinary: Set to true when engineer is suspended to block next login ---
+    login_disabled: { type: Boolean, default: false },
+    login_disabled_reason: { type: String, default: null }
 });
 
 export default mongoose.model("User", userSchema);

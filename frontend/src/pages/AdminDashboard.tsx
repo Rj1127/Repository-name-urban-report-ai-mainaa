@@ -766,7 +766,7 @@ export default function AdminDashboard() {
                     className="h-10 bg-background border-border"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1 font-medium">
-                    Total hours allocated for resolution (Includes 1 Day SNRP Buffer)
+                    Total hours allocated for resolution (Includes 1 Day CDB Buffer)
                   </p>
                </div>
                <div className="px-4 py-2 bg-secondary rounded-lg text-xs font-bold whitespace-nowrap">

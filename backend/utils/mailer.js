@@ -12,18 +12,18 @@ const transporter = nodemailer.createTransport({
 
 export const sendOTP = async (email, otp) => {
     const mailOptions = {
-        from: `"Smart Nagar Reporting System" <${process.env.EMAIL_USER}>`,
+        from: `"CivicDrishti Bharat System" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Your Authentication OTP - Smart Nagar",
+        subject: "Your Authentication OTP - CivicDrishti Bharat",
         html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
             <div style="text-align: center; margin-bottom: 30px;">
-                <h2 style="color: #8b0000; margin: 0;">Smart Nagar Reporting Portal</h2>
+                <h2 style="color: #8b0000; margin: 0;">CivicDrishti Bharat</h2>
                 <p style="color: #666; margin-top: 5px;">Secure Identity Verification</p>
             </div>
             
             <p style="font-size: 16px; color: #333;">Hello,</p>
-            <p style="font-size: 16px; color: #333;">You have requested to authenticate with the Smart Nagar Reporting platform.</p>
+            <p style="font-size: 16px; color: #333;">You have requested to authenticate with the CivicDrishti Bharat platform.</p>
             
             <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin: 30px 0;">
                 <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #8b0000;">${otp}</span>
@@ -34,7 +34,7 @@ export const sendOTP = async (email, otp) => {
             <hr style="border: 0; border-top: 1px solid #eee; margin: 40px 0 20px;" />
             <p style="font-size: 12px; color: #999; text-align: center;">
                 If you did not initiate this request, you can safely ignore this email.<br>
-                © 2026 Smart Nagar Reporting Portal (SNRP)
+                © 2026 CivicDrishti Bharat
             </p>
         </div>
         `

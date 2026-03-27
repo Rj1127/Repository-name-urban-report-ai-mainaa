@@ -74,27 +74,17 @@ router.post("/login", async (req, res) => {
         const user = await User.findOne({ email, password });
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
-        /* TEMPORARILY BYPASSED OTP
-        if (!otp) {
-            // Generate and send OTP
-            const code = generateOTP();
-            await OTP.findOneAndUpdate({ email }, { otp: code }, { upsert: true, new: true, setDefaultsOnInsert: true });
-
-            const emailSent = await sendOTP(email, code);
-            if (!emailSent) {
-                return res.status(500).json({ message: "Failed to send OTP email. Please ensure your Google App Password is correct." });
-            }
-            return res.json({ requireOtp: true, message: "OTP sent to your email for 2-Step Verification. Code expires in 5 minutes." });
+        // --- Disciplinary Gate: Block login if account is disabled due to suspension ---
+        if (user.login_disabled) {
+            const untilDate = user.suspension_until 
+                ? new Date(user.suspension_until).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+                : 'further notice';
+            return res.status(403).json({ 
+                message: `⛔ Account Suspended. Your account has been disabled due to disciplinary action. You cannot log in until ${untilDate}. Contact your administrator with your reference suspension order.`,
+                is_suspended: true,
+                suspension_letter: user.suspension_letter
+            });
         }
-
-        // Verify OTP
-        const otpRecord = await OTP.findOne({ email });
-        if (!otpRecord) return res.status(400).json({ message: "OTP expired or missing. Please request a new one." });
-        if (otpRecord.otp !== otp) return res.status(401).json({ message: "Invalid OTP code." });
-
-        // OTP Valid! Delete consumed OTP and authenticate user.
-        await OTP.deleteOne({ email });
-        */
 
         res.json(user);
     } catch (err) {
