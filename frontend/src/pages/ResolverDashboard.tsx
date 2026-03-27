@@ -358,7 +358,7 @@ export default function ResolverDashboard() {
                 <Upload className="h-5 w-5 text-primary" /> Work Submission
               </DialogTitle>
               <p className="text-xs font-bold text-muted-foreground mt-2 leading-relaxed">
-                Smart Nagar Reporting AI automatically verifies the state transition from Before to After. Ensure the site is clear.
+                CivicDrishti Bharat AI automatically verifies the state transition from Before to After. Ensure the site is clear.
               </p>
             </DialogHeader>
 

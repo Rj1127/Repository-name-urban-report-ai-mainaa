@@ -162,7 +162,7 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
             </div>
 
             <span className="text-base font-bold text-foreground relative z-10">Provide Issue Evidence</span>
-            <span className="mt-1.5 text-xs text-muted-foreground font-medium max-w-[280px] relative z-10 leading-relaxed">Smart Nagar Reporting portal (SNRP) will detect the problem automatically</span>
+            <span className="mt-1.5 text-xs text-muted-foreground font-medium max-w-[280px] relative z-10 leading-relaxed">CivicDrishti Bharat will detect the problem automatically</span>
           </div>
         )}
       </div>
