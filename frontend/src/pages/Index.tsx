@@ -1,10 +1,13 @@
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2 } from 'lucide-react';
+import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import heroImage from '@/assets/hero-city.jpg';
+import diagramImage from '@/assets/civic-drishti-diagram.png';
+import processImage from '@/assets/process-architecture.png';
 
 const features = [
   { icon: Camera, title: 'AI Vision Detection', desc: 'Upload a photo and our AI instantly identifies potholes, garbage, drains & road damage with precision', gradient: 'from-primary/20 to-primary/5' },
@@ -30,11 +33,53 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+const slides = [
+  {
+    image: heroImage,
+    title: (
+      <span className="text-white drop-shadow-2xl">
+        Rapid Issue<br />
+        Resolution
+      </span>
+    ),
+    subtitle: "ACTIVE GOVERNANCE",
+    subtitleColor: "text-amber-400 bg-amber-400/20 border-amber-400/40",
+    description: "CivicDrishti Bharat (CDB) uses computer vision to instantly detect civic infrastructure problems. Upload a photo → AI classifies it → Track resolution in real-time.",
+    showCard: true
+  },
+  {
+    image: diagramImage,
+    title: "",
+    subtitle: "SYSTEM ARCHITECTURE",
+    subtitleColor: "text-emerald-400 bg-emerald-400/20 border-emerald-400/40",
+    description: "",
+    showCard: false,
+    useFullImage: true
+  },
+  {
+    image: processImage,
+    title: "",
+    subtitle: "PROCESS ARCHITECTURE",
+    subtitleColor: "text-blue-400 bg-blue-400/20 border-blue-400/40",
+    description: "",
+    showCard: false,
+    useFullImage: true
+  }
+];
+
 export default function Index() {
   const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Navbar />
 
       {/* Official State Emblem Banner */}
@@ -84,88 +129,130 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0">
-          <img src={heroImage} alt="Smart city" className="h-full w-full object-cover opacity-15" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(160_84%_39%/0.08),transparent_60%)]" />
-        </div>
+      {/* Hero Carousel Section */}
+      <section className="relative pt-12 pb-24 bg-background">
+        <div className="container max-w-6xl mx-auto px-4">
+          <div className="relative group">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] shadow-2xl border border-white/10"
+              >
+                {/* Background Image with Zoom Effect */}
+                <motion.img 
+                  initial={{ scale: 1.1 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 10, ease: "linear" }}
+                  src={slides[currentSlide].image} 
+                  alt="Slide Background" 
+                  className={`h-full w-full transition-all duration-1000 ${slides[currentSlide].useFullImage ? 'object-contain bg-[#0a0f18] p-4 sm:p-8' : 'object-cover opacity-90'}`}
+                />
 
-        {/* Floating orbs */}
-        <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-primary/5 blur-3xl animate-float" />
-        <div className="absolute bottom-20 right-10 h-96 w-96 rounded-full bg-accent/5 blur-3xl animate-float" style={{ animationDelay: '3s' }} />
-
-        <div className="container relative grid gap-12 py-24 lg:grid-cols-2 lg:py-36">
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="flex flex-col justify-center"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mb-6 inline-flex w-fit items-center gap-2 rounded-full glass px-4 py-2 text-sm font-medium text-primary"
-            >
-              <Sparkles className="h-4 w-4" />
-              AI-Powered Civic Intelligence Platform
-            </motion.div>
-            <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-foreground lg:text-6xl xl:text-7xl leading-[1.1]">
-              Report Issues.{' '}
-              <span className="text-gradient-primary">AI Detects.</span>
-              <br />City Resolves.
-            </h1>
-            <p className="mb-10 max-w-xl text-lg text-foreground font-medium leading-relaxed">
-              CivicDrishti Bharat (CDB) uses computer vision to instantly detect civic infrastructure problems.
-              Upload a photo → AI classifies it → Track resolution in real-time.
-            </p>
-
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
-            className="hidden lg:flex items-center justify-center"
-          >
-            <Card className="w-full max-w-md glass-strong shadow-elevated border-border/30 hover:shadow-glow transition-shadow duration-500">
-              <CardContent className="p-8">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-                    <Shield className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">Quick Report</h3>
+                {/* Content Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+                
+                <div className="absolute bottom-12 left-12 z-20 max-w-2xl">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className={`mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black tracking-widest uppercase transition-colors duration-1000 ${slides[currentSlide].subtitleColor}`}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    {slides[currentSlide].subtitle}
+                  </motion.div>
+                  
+                  {slides[currentSlide].title && (
+                    <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter leading-[0.9] text-white drop-shadow-2xl">
+                      {slides[currentSlide].title}
+                    </h1>
+                  )}
                 </div>
-                <div className="space-y-5">
-                  {['Upload Photo', 'AI Detects Issue', 'Submit & Track'].map((step, i) => (
-                    <motion.div
-                      key={step}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.5 + i * 0.15 }}
-                      className="flex items-center gap-4 rounded-xl bg-secondary/50 p-4 transition-colors hover:bg-secondary"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl gradient-primary text-sm font-bold text-primary-foreground">
-                        {i + 1}
-                      </div>
-                      <span className="font-semibold text-foreground">{step}</span>
-                      {i < 2 && <CheckCircle className="ml-auto h-5 w-5 text-primary/60" />}
-                    </motion.div>
-                  ))}
+
+                {/* Primary CTA Button (Optional: overlay or below) */}
+                <div className="absolute bottom-12 right-12 z-20 hidden md:block">
+                  <Button 
+                    size="lg" 
+                    onClick={() => navigate('/register')}
+                    className="px-8 h-14 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest hover:shadow-glow transition-all"
+                  >
+                    Get Started <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
                 </div>
-                <Button
-                  className="mt-6 w-full h-12 gradient-primary text-primary-foreground font-semibold hover:opacity-90 transition-all duration-300 hover:shadow-glow"
-                  onClick={() => navigate('/register')}
-                >
-                  Get Started Free
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Navigation Dots (Outside/Below Container) */}
+            <div className="mt-8 flex justify-center gap-2.5">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-2 transition-all duration-500 rounded-full ${currentSlide === idx ? 'w-10 bg-primary shadow-glow-sm' : 'w-2 bg-primary/20 hover:bg-primary/40'}`}
+                />
+              ))}
+            </div>
+            
+            {/* Side Controls (Floating) */}
+            <div className="absolute top-1/2 -left-6 -translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)} className="h-12 w-12 rounded-full glass border-white/10 text-white hover:bg-white/10 shadow-xl">
+                 <ChevronLeft className="h-6 w-6" />
+              </Button>
+            </div>
+            <div className="absolute top-1/2 -right-6 -translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)} className="h-12 w-12 rounded-full glass border-white/10 text-white hover:bg-white/10 shadow-xl">
+                 <ChevronRight className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* Quick Report Section (Moved below hero for consistency) */}
+      {slides[0].showCard && (
+        <section className="container max-w-4xl mx-auto px-4 mb-24 -mt-12 relative z-40">
+           <motion.div
+             initial={{ opacity: 0, y: 40 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+           >
+             <Card className="glass-strong border-white/10 shadow-2xl p-4 sm:p-8 backdrop-blur-2xl rounded-[2rem]">
+                <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+                   <div className="flex items-center gap-4">
+                      <div className="h-14 w-14 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
+                         <Shield className="h-7 w-7 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-black text-2xl tracking-tight">CDB Command Centre</h3>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Autonomous Governance Hub</p>
+                      </div>
+                   </div>
+                   
+                   <div className="flex flex-wrap gap-6 justify-center">
+                      {[
+                        { label: "AI Verification", value: "Active", color: "text-emerald-400" },
+                        { label: "Pan-Bharat", value: "Coverage", color: "text-blue-400" },
+                        { label: "Uptime", value: "99.98%", color: "text-amber-400" }
+                      ].map((item, idx) => (
+                        <div key={idx} className="text-center px-4 border-r border-white/5 last:border-0">
+                          <p className={`text-lg font-black uppercase ${item.color}`}>{item.value}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">{item.label}</p>
+                        </div>
+                      ))}
+                   </div>
+
+                   <Button onClick={() => navigate('/register')} className="gradient-primary text-white font-black uppercase tracking-widest px-8 rounded-xl h-12">
+                      Join Platform
+                   </Button>
+                </div>
+             </Card>
+           </motion.div>
+        </section>
+      )}
 
       {/* Stats Bar */}
       <section className="border-y border-border/50 bg-secondary/30">
