@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
     activity_status: { type: String, enum: ['Available', 'Busy', 'On Leave'], default: 'Available' },
     is_suspended: { type: Boolean, default: false },
     suspension_until: { type: Date, default: null },
-    suspension_letter: { type: String, default: null }
+    suspension_letter: { type: String, default: null },
+    disciplinary_notice_url: { type: String, default: null }
 });
 
 export default mongoose.model("User", userSchema);

@@ -10,7 +10,7 @@ const complaintSchema = new mongoose.Schema({
     severity: { type: String, enum: ["Low", "Medium", "High"], default: null },
     predicted_days: { type: Number, default: null },
     reference_number: { type: String, unique: true, default: null },
-    status: { type: String, enum: ["New", "Forwarded", "Assigned", "In Progress", "Resolved", "Closed"], default: "New" },
+    status: { type: String, enum: ["New", "Forwarded", "Assigned", "In Progress", "Show Cause Issued", "Compliance Review", "Resolved", "Closed"], default: "New" },
     before_image: { type: String, default: null },
     after_image: { type: String, default: null },
     resolution_analysis: {

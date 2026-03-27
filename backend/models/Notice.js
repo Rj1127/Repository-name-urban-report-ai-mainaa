@@ -9,6 +9,8 @@ const noticeSchema = new mongoose.Schema({
     responded: { type: Boolean, default: false },
     admin_decision: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" },
     admin_notes: { type: String, default: "" },
+    evidence_image: { type: String, default: null }, // Engineer's proof for Show Cause
+    disciplinary_notice_url: { type: String, default: null }, // JPG Notice URL
     suspension_letter: { type: String, default: null },
     created_at: { type: Date, default: Date.now }
 });

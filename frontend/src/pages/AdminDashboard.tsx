@@ -166,6 +166,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCloseComplaint = async (complaintId: string) => {
+    if (!window.confirm("Are you sure you want to close this complaint? This will free the assigned engineer.")) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/${complaintId}/close`, { method: 'POST' });
+      if (!res.ok) throw new Error("Close protocol failed");
+      toast.success("Complaint closed and engineer released");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const handleSendNotice = async () => {
     if (!noticeMessage.trim()) return;
     try {
@@ -192,6 +204,8 @@ export default function AdminDashboard() {
     switch (status) {
       case 'New': return 'bg-blue-500 text-white';
       case 'In Progress': return 'bg-orange-500 text-white';
+      case 'Show Cause Issued': return 'bg-red-600 text-white font-black animate-pulse shadow-glow-destructive';
+      case 'Compliance Review': return 'bg-purple-600 text-white font-black shadow-glow';
       case 'Resolved': return 'bg-emerald-500 text-white';
       case 'Closed': return 'bg-gray-500 text-white';
       default: return 'bg-primary text-white';
@@ -344,22 +358,30 @@ export default function AdminDashboard() {
                                <h3 className="font-bold text-lg text-foreground capitalize mb-1">{c.issue_type?.replace('_', ' ')}</h3>
                                <p className="text-xs text-muted-foreground mb-4">Engineer: <span className="font-bold text-foreground">{c.assigned_engineer_name || 'N/A'}</span></p>
                                
-                               <div className="flex flex-col gap-3">
-                                  {c.satisfaction_status === "Dissatisfied" && (
+                               <div className="flex flex-col gap-2">
+                                  <div className="grid grid-cols-2 gap-2">
                                      <Button 
                                        variant="destructive" 
                                        size="sm"
-                                         onClick={() => { 
-                                           setSelectedComplaint(c); 
-                                           setNoticeMessage(`DISCIPLINARY NOTICE: Citizen Reported Dissatisfaction.\n\nRef: ${c.reference_number}\nCitizen Feedback: "${c.citizen_feedback || 'No comments provided'}"\n\nAI Verification: ${c.resolution_analysis?.analysis_text || c.resolution_analysis?.analysis || 'Conflict detected'}.\n\nPlease provide a formal explanation for this discrepancy immediately.`);
-                                           setNoticeModalOpen(true); 
-                                         }} 
-                                       className="w-full font-black animate-pulse shadow-glow h-9"
+                                       onClick={() => { 
+                                         setSelectedComplaint(c); 
+                                         setNoticeMessage(`URGENT: SHOW CAUSE NOTICE (KARAN BATAO)\n\nReference: ${c.reference_number}\nIssue Type: ${c.issue_type}\n\nAdministrative review has detected potential irregularities or delays in your current assignment.\n\nYou are required to submit an immediate justification with site-visit proof (evidence image). Failure to comply will result in disciplinary action.`);
+                                         setNoticeModalOpen(true); 
+                                       }} 
+                                       className="font-black text-[10px] uppercase h-10 border-2 border-destructive shadow-glow-destructive"
                                      >
-                                       <AlertOctagon className="mr-2 h-4 w-4" /> Issue One-Click Notice
+                                       Show Cause
                                      </Button>
-                                  )}
-                                  <Button variant="secondary" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full font-bold">Monitor Status</Button>
+                                     <Button 
+                                       variant="outline" 
+                                       size="sm"
+                                       onClick={() => handleCloseComplaint(c.id || c._id)}
+                                       className="font-black text-[10px] uppercase h-10 border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/10"
+                                     >
+                                       Satisfied/Close
+                                     </Button>
+                                  </div>
+                                  <Button variant="secondary" size="sm" onClick={() => { setViewingComplaint(c); setComplaintModalOpen(true); }} className="w-full font-bold h-9">Inspection Profile</Button>
                                </div>
                             </Card>
                           ))

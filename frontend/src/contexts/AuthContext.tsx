@@ -12,6 +12,7 @@ interface User {
   is_suspended?: boolean;
   suspension_until?: string | Date | null;
   suspension_letter?: string | null;
+  disciplinary_notice_url?: string | null;
 }
 
 interface AuthContextType {

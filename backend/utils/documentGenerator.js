@@ -252,3 +252,195 @@ export const generateSuspensionLetter = async (engineer, notice, adminNotes, day
     doc.end();
     return { pdf: `/documents/certificates/${suspId}.pdf`, suspId, untilDate };
 };
+
+/**
+ * Generates an Official Disciplinary Notice in JPG format (Karan Batao)
+ */
+export const generateDisciplinaryJPG = async (engineer, notice, adminNotes, days = 7) => {
+    const noticeId = `NOTICE-${Date.now()}`;
+    const jpgPath = path.join(CERTIFICATES_DIR, `${noticeId}.jpeg`);
+    const untilDate = new Date();
+    untilDate.setDate(untilDate.getDate() + parseInt(days));
+
+    const html = `
+        <html>
+        <head>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                body { 
+                    font-family: 'Inter', sans-serif; 
+                    margin: 0; 
+                    padding: 40px; 
+                    background: #7f1d1d; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    min-height: 100vh;
+                }
+                .notice-card {
+                    background: white;
+                    width: 700px;
+                    border-radius: 24px;
+                    padding: 40px;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    border: 8px solid #ef4444;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .header {
+                    text-align: center;
+                    border-bottom: 2px solid #fee2e2;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .header h1 {
+                    color: #991b1b;
+                    font-size: 28px;
+                    margin: 0;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                }
+                .header p {
+                    color: #7f1d1d;
+                    font-weight: 800;
+                    margin: 5px 0 0;
+                    font-size: 14px;
+                }
+                .main-title {
+                    text-align: center;
+                    font-size: 36px;
+                    font-weight: 900;
+                    color: #111827;
+                    margin-bottom: 30px;
+                    line-height: 1.1;
+                }
+                .details-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                .detail-item {
+                    background: #fef2f2;
+                    padding: 15px;
+                    border-radius: 12px;
+                }
+                .detail-item label {
+                    display: block;
+                    font-size: 10px;
+                    font-weight: 900;
+                    color: #991b1b;
+                    text-transform: uppercase;
+                    margin-bottom: 4px;
+                }
+                .detail-item span {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #111827;
+                }
+                .reason-box {
+                    background: #111827;
+                    color: white;
+                    padding: 25px;
+                    border-radius: 16px;
+                    margin-bottom: 30px;
+                    position: relative;
+                }
+                .reason-box label {
+                    color: #ef4444;
+                    font-size: 10px;
+                    font-weight: 900;
+                    text-transform: uppercase;
+                    display: block;
+                    margin-bottom: 10px;
+                }
+                .reason-box p {
+                    margin: 0;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    font-style: italic;
+                }
+                .footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                    border-top: 2px solid #fee2e2;
+                    padding-top: 20px;
+                }
+                .restriction {
+                    color: #991b1b;
+                    font-weight: 800;
+                    font-size: 12px;
+                }
+                .timestamp {
+                    color: #64748b;
+                    font-size: 10px;
+                    font-weight: 600;
+                }
+                .qr-placeholder {
+                    position: absolute;
+                    top: -20px;
+                    right: -20px;
+                    width: 100px;
+                    height: 100px;
+                    background: #ef4444;
+                    transform: rotate(45deg);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="notice-card">
+                <div class="qr-placeholder"></div>
+                <div class="header">
+                    <h1>Goverance Accountability Office</h1>
+                    <p>SMART NAGAR REPORTING PORTAL (SNRP)</p>
+                </div>
+                
+                <h2 class="main-title">OFFICIAL TERMINAL<br>DISCIPLINARY BLOCK</h2>
+                
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <label>Personnel Name</label>
+                        <span>${engineer.name}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Case Reference</label>
+                        <span>${notice.complaint_id?.reference_number || 'N/A'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Block Duration</label>
+                        <span>${days} Days</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Restricted Until</label>
+                        <span>${untilDate.toLocaleDateString()}</span>
+                    </div>
+                </div>
+                
+                <div class="reason-box">
+                    <label>Grounds for Action</label>
+                    <p>"${adminNotes || 'Submission of fraudulent field data and failure to provide satisfactory justification.'}"</p>
+                </div>
+                
+                <div class="footer">
+                    <div class="restriction">
+                        STATUS: ACCESS RESTRICTED
+                    </div>
+                    <div class="timestamp">
+                        ISSUED: ${new Date().toLocaleString()} | ID: ${noticeId}
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setViewport({ width: 850, height: 850 });
+    await page.setContent(html);
+    await page.screenshot({ path: jpgPath, type: 'jpeg', quality: 95 });
+    await browser.close();
+
+    return { jpg: `/documents/certificates/${noticeId}.jpeg` };
+};

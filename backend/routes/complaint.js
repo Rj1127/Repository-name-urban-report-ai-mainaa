@@ -253,12 +253,16 @@ router.post("/feedback", async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// CREATE NOTICE
+// CREATE NOTICE (Show Cause)
 router.post("/notice", async (req, res) => {
     try {
         const { engineer_id, admin_id, complaint_id, message } = req.body;
         const notice = await Notice.create({ engineer_id, admin_id, complaint_id, message });
-        res.json({ message: "Notice issued.", notice });
+        
+        // Update complaint status to Show Cause Issued
+        await Complaint.findByIdAndUpdate(complaint_id, { status: "Show Cause Issued" });
+        
+        res.json({ message: "Show Cause Notice issued.", notice });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -284,12 +288,20 @@ router.get("/notices/:engineer_id", async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// RESPOND TO NOTICE
+// RESPOND TO NOTICE (Show Cause Response)
 router.post("/notices/:notice_id/respond", async (req, res) => {
     try {
-        const { reason } = req.body;
-        await Notice.findByIdAndUpdate(req.params.notice_id, { reason, responded: true });
-        res.json({ message: "Response submitted." });
+        const { reason, evidence_image } = req.body;
+        const notice = await Notice.findByIdAndUpdate(req.params.notice_id, { 
+            reason, 
+            evidence_image,
+            responded: true 
+        }, { new: true });
+
+        // Update complaint status to Compliance Review
+        await Complaint.findByIdAndUpdate(notice.complaint_id, { status: "Compliance Review" });
+
+        res.json({ message: "Response submitted for review." });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -302,25 +314,55 @@ router.post("/notices/:notice_id/review", async (req, res) => {
 
         if (action === 'accept') {
             await Notice.findByIdAndUpdate(req.params.notice_id, { admin_decision: "Accepted", admin_notes: notes || "Explanation accepted. Re-assigning." });
+            
+            // Re-assign: Reset status to New, add current engineer to exclusions
+            await Complaint.findByIdAndUpdate(notice.complaint_id._id, { 
+                $addToSet: { excluded_engineers: notice.engineer_id._id }, 
+                status: "New",
+                is_reassigned: true 
+            });
+            
+            // Delete current assignment
+            await Assignment.deleteMany({ complaint_id: notice.complaint_id._id });
+            
+            // Engineer is available again
+            await User.findByIdAndUpdate(notice.engineer_id._id, { activity_status: "Available" });
+            
+            res.json({ message: "Explanation accepted. Complaint reset for re-assignment." });
+        } else {
+            const { generateSuspensionLetter, generateDisciplinaryJPG } = await import("../utils/documentGenerator.js");
+            
+            // Generate PDF Suspension Letter
+            const suspData = await generateSuspensionLetter(notice.engineer_id, notice, notes, suspension_days || 7);
+            
+            // Generate JPG Disciplinary Notice (Karan Batao)
+            const jpgNotice = await generateDisciplinaryJPG(notice.engineer_id, notice, notes, suspension_days || 7);
+
+            await Notice.findByIdAndUpdate(req.params.notice_id, { 
+                admin_decision: "Rejected", 
+                admin_notes: notes || "Explanation rejected.", 
+                suspension_letter: suspData.pdf,
+                disciplinary_notice_url: jpgNotice.jpg
+            });
+
+            // Block Engineer & Re-assign Complaint
+            await User.findByIdAndUpdate(notice.engineer_id._id, { 
+                is_suspended: true, 
+                suspension_until: suspData.untilDate, 
+                suspension_letter: suspData.pdf,
+                disciplinary_notice_url: jpgNotice.jpg,
+                activity_status: "On Leave" 
+            });
+
+            // Re-assign Complaint (reset to New, exclude current engineer)
             await Complaint.findByIdAndUpdate(notice.complaint_id._id, { 
                 $addToSet: { excluded_engineers: notice.engineer_id._id }, 
                 status: "New",
                 is_reassigned: true 
             });
             await Assignment.deleteMany({ complaint_id: notice.complaint_id._id });
-            await User.findByIdAndUpdate(notice.engineer_id._id, { activity_status: "Available" });
-            res.json({ message: "Explanation accepted." });
-        } else {
-            const { generateSuspensionLetter } = await import("../utils/documentGenerator.js");
-            const suspData = await generateSuspensionLetter(notice.engineer_id, notice, notes, suspension_days || 7);
-            await Notice.findByIdAndUpdate(req.params.notice_id, { admin_decision: "Rejected", admin_notes: notes || "Explanation rejected.", suspension_letter: suspData.pdf });
-            await User.findByIdAndUpdate(notice.engineer_id._id, { 
-                is_suspended: true, 
-                suspension_until: suspData.untilDate, 
-                suspension_letter: suspData.pdf,
-                activity_status: "On Leave" 
-            });
-            res.json({ message: "Explanation rejected." });
+
+            res.json({ message: "Explanation rejected. Engineer suspended and complaint reset." });
         }
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -337,6 +379,22 @@ router.post("/analyze-image", async (req, res) => {
         const text = response.text().trim();
         try { const parsed = extractJSON(text); res.json(parsed); } catch (e) { res.status(500).json({ error: "AI formatting error" }); }
     } catch (err) { res.status(500).json({ error: "AI Analysis Failed: " + err.message }); }
+});
+
+// CLOSE COMPLAINT (Admin)
+router.post("/:id/close", async (req, res) => {
+    try {
+        const complaint = await Complaint.findByIdAndUpdate(req.params.id, { status: "Closed" }, { new: true });
+        
+        // Find assignment to free engineer
+        const assignment = await Assignment.findOne({ complaint_id: req.params.id });
+        if (assignment) {
+            await User.findByIdAndUpdate(assignment.engineer_id, { activity_status: "Available" });
+            await Assignment.deleteOne({ _id: assignment._id });
+        }
+        
+        res.json({ message: "Complaint closed and engineer released.", complaint });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // DELETE COMPLAINT

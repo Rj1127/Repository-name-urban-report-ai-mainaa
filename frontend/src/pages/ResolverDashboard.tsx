@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info, FileText } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info, FileText, Download } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ export default function ResolverDashboard() {
   const [noticeModalOpen, setNoticeModalOpen] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<any>(null);
   const [noticeResponse, setNoticeResponse] = useState('');
+  const [evidenceImage, setEvidenceImage] = useState<string | null>(null);
   const [submittingNotice, setSubmittingNotice] = useState(false);
 
   const fetchTasks = async () => {
@@ -126,7 +127,10 @@ export default function ResolverDashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/${selectedNotice._id}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: noticeResponse })
+        body: JSON.stringify({ 
+          reason: noticeResponse,
+          evidence_image: evidenceImage
+        })
       });
 
       if (!res.ok) throw new Error("Failed to submit response");
@@ -172,10 +176,17 @@ export default function ResolverDashboard() {
                <div className="flex flex-col gap-3">
                   <Button 
                     variant="outline" 
+                    onClick={() => user.disciplinary_notice_url && window.open(`${import.meta.env.VITE_API_BASE_URL}${user.disciplinary_notice_url}`)}
+                    className="h-12 border-destructive/30 text-destructive font-black uppercase tracking-widest hover:bg-destructive/10"
+                  >
+                     <Download className="h-4 w-4 mr-2" /> Download Official Notice (JPG)
+                  </Button>
+                  <Button 
+                    variant="outline" 
                     onClick={() => user.suspension_letter && window.open(`${import.meta.env.VITE_API_BASE_URL}${user.suspension_letter}`)}
                     className="h-12 border-destructive/30 text-destructive font-black uppercase tracking-widest hover:bg-destructive/10"
                   >
-                     <FileText className="h-4 w-4 mr-2" /> Download Suspension Order
+                     <FileText className="h-4 w-4 mr-2" /> Download Suspension Order (PDF)
                   </Button>
                   <Button variant="ghost" className="font-bold text-muted-foreground uppercase text-xs" onClick={() => window.location.href='/'}>
                      Exit Terminal
@@ -419,10 +430,35 @@ export default function ResolverDashboard() {
                      className="w-full h-32 bg-secondary/30 border border-border/50 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-destructive focus:outline-none transition-all"
                   />
                </div>
+
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Mandatory Site Proof (Current Photo)</label>
+                  {evidenceImage ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-border/50 group h-40">
+                      <img src={evidenceImage} alt="Evidence" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Button variant="secondary" size="sm" onClick={() => setEvidenceImage(null)}>Retake</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-destructive/30 bg-destructive/5 transition-all hover:bg-destructive/10">
+                      <Camera className="mb-2 h-8 w-8 text-destructive opacity-80" />
+                      <span className="text-[10px] font-black text-destructive uppercase">Tap to Capture Site Evidence</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setEvidenceImage(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }} />
+                    </label>
+                  )}
+               </div>
             </div>
 
             <DialogFooter className="gap-2">
-              <Button onClick={submitNoticeResponse} disabled={submittingNotice || !noticeResponse} className="bg-destructive text-white hover:opacity-90 shadow-glow-destructive font-black uppercase tracking-widest flex-1">
+              <Button onClick={submitNoticeResponse} disabled={submittingNotice || !noticeResponse || !evidenceImage} className="bg-destructive text-white hover:opacity-90 shadow-glow-destructive font-black uppercase tracking-widest flex-1">
                 {submittingNotice ? 'Transmitting...' : 'Transmit Statement'}
               </Button>
             </DialogFooter>

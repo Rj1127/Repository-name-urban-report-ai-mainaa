@@ -51,6 +51,7 @@ interface DisciplinaryLog {
   };
   message: string;
   reason: string;
+  evidence_image?: string;
   responded: boolean;
   admin_decision: string;
   admin_notes: string;
@@ -125,6 +126,23 @@ export default function DisciplineModule() {
       });
       if (!res.ok) throw new Error("Action failed");
       toast.success(`${action} applied successfully`);
+      fetchDisciplineData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleReviewNotice = async (noticeId: string, action: 'accept' | 'reject', notes: string, days: number) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${apiUrl}/complaints/notices/${noticeId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, notes, suspension_days: days })
+      });
+      if (!res.ok) throw new Error("Review submission failed");
+      toast.success(action === 'accept' ? "Justification Accepted" : "Justification Rejected & Suspended");
+      setDetailsModalOpen(false);
       fetchDisciplineData();
     } catch (err: any) {
       toast.error(err.message);
@@ -409,13 +427,30 @@ export default function DisciplineModule() {
                             <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 border-background flex items-center justify-center ${log.admin_decision === 'Rejected' ? 'bg-destructive' : 'bg-primary'}`}>
                                 <div className="h-1.5 w-1.5 rounded-full bg-background" />
                             </div>
-                            <div className="p-4 glass-panel border-border/20 rounded-2xl">
+                             <div className="p-4 glass-panel border-border/20 rounded-2xl">
                                <div className="flex justify-between items-start mb-2">
                                   <h4 className="font-bold text-sm">Case REF: {log.complaint_id?.reference_number || 'N/A'}</h4>
                                   <Badge variant="outline" className={`text-[10px] uppercase font-black ${log.admin_decision === 'Rejected' ? 'text-destructive' : 'text-emerald-500'}`}>{log.admin_decision}</Badge>
                                </div>
-                               <p className="text-xs text-muted-foreground mb-3 italic">"{log.message}"</p>
-                               <div className="flex justify-between items-center text-[10px] font-bold">
+                               <p className="text-xs text-muted-foreground mb-2 italic">Notice: "{log.message}"</p>
+                               {log.responded && (
+                                 <div className="mt-3 p-3 bg-secondary/30 rounded-xl border border-border/30">
+                                   <p className="text-[10px] font-black uppercase text-primary mb-1">Engineer Justification:</p>
+                                   <p className="text-xs font-medium italic mb-3">"{log.reason}"</p>
+                                   {log.evidence_image && (
+                                     <div className="rounded-lg overflow-hidden border border-border/50 mb-3">
+                                       <img src={log.evidence_image} alt="Site Proof" className="w-full h-32 object-cover" />
+                                     </div>
+                                   )}
+                                   {log.admin_decision === 'Pending' && (
+                                     <div className="flex gap-2 mt-4">
+                                       <Button size="sm" onClick={() => handleReviewNotice(log._id, 'accept', "Justification approved.", 0)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-[10px]">SATISFY</Button>
+                                       <Button size="sm" onClick={() => handleReviewNotice(log._id, 'reject', "Justification not satisfactory.", 7)} variant="destructive" className="flex-1 font-bold h-8 text-[10px]">NOT SATISFY</Button>
+                                     </div>
+                                   )}
+                                 </div>
+                               )}
+                               <div className="flex justify-between items-center text-[10px] font-bold mt-3">
                                   <span className="text-primary flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(log.created_at).toLocaleDateString()}</span>
                                   <span className="text-muted-foreground uppercase">{log.complaint_id?.issue_type?.replace('_', ' ')}</span>
                                </div>
