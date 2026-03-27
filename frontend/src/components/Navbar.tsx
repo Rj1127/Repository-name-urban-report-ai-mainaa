@@ -30,14 +30,14 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 glass-strong">
+    <nav className="sticky top-0 z-50 border-b border-red-900/50 bg-[#800000] backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-full border-2 border-primary/20 bg-background shadow-sm transition-all duration-300 group-hover:shadow-glow group-hover:border-primary/50 group-hover:scale-105">
-            <img src="/logo.png" alt="CivicDrishti Bharat Logo" className="h-full w-full object-cover" />
+          <div className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-xl border-2 border-white/20 bg-white/10 shadow-sm transition-all duration-300 group-hover:scale-105">
+            <Shield className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: "'Montserrat', sans-serif" }}>
-            CivicDrishti <span className="text-gradient-primary">Bharat</span>
+          <span className="text-xl font-black tracking-tighter text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+            Smart Nagar <span className="font-medium opacity-80">Reporting portal(<span className="text-red-300">SNRP</span>)</span>
           </span>
         </Link>
 
