@@ -118,7 +118,7 @@ export default function Index() {
               <br />City Resolves.
             </h1>
             <p className="mb-10 max-w-xl text-lg text-foreground font-medium leading-relaxed">
-              Smart Nagar Reporting portal(SNRP) uses computer vision to instantly detect civic infrastructure problems.
+              CivicDrishti Bharat (CDB) uses computer vision to instantly detect civic infrastructure problems.
               Upload a photo → AI classifies it → Track resolution in real-time.
             </p>
 
@@ -197,7 +197,7 @@ export default function Index() {
             className="mb-16 text-center"
           >
             <h2 className="mb-4 text-3xl font-extrabold text-foreground lg:text-4xl">
-              How <span className="text-gradient-primary">Smart Nagar Reporting portal(SNRP)</span> Works
+              How <span className="text-gradient-primary">CivicDrishti Bharat</span> Works
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
               End-to-end civic issue management powered by AI vision, GPS tracking, and real-time analytics
@@ -234,9 +234,9 @@ export default function Index() {
         <div className="container">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Shield className="h-5 w-5 text-primary" />
-            <span className="font-bold text-foreground">Smart Nagar Reporting portal(SNRP)</span>
+            <span className="font-bold text-foreground">CivicDrishti Bharat</span>
           </div>
-          <p className="text-sm text-muted-foreground">© 2026 Smart Nagar Reporting portal(SNRP) — Smart Civic Issue Detection Platform</p>
+          <p className="text-sm text-muted-foreground">© 2026 CivicDrishti Bharat — Smart Civic Issue Detection Platform</p>
         </div>
       </footer>
     </div>

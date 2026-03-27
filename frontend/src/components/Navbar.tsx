@@ -32,12 +32,12 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 glass-strong">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary transition-shadow group-hover:shadow-glow">
-            <Landmark className="h-5 w-5 text-white" />
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-full border-2 border-primary/20 bg-background shadow-sm transition-all duration-300 group-hover:shadow-glow group-hover:border-primary/50 group-hover:scale-105">
+            <img src="/logo.png" alt="CivicDrishti Bharat Logo" className="h-full w-full object-cover" />
           </div>
-          <span className="text-lg font-bold text-foreground tracking-tight">
-            Smart Nagar Reporting portal(<span className="text-gradient-primary">SNRP</span>)
+          <span className="text-xl font-extrabold tracking-tight text-foreground" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+            CivicDrishti <span className="text-gradient-primary">Bharat</span>
           </span>
         </Link>
 
