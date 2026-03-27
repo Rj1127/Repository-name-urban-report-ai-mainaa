@@ -30,15 +30,27 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-red-900/50 bg-[#800000] backdrop-blur-md">
+    <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-[#7a0000]/95 backdrop-blur-xl shadow-lg">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-xl border-2 border-white/20 bg-white/10 shadow-sm transition-all duration-300 group-hover:scale-105">
-            <Shield className="h-6 w-6 text-white" />
+          {/* CivicDrishti Logo Mark — Eye + Shield hybrid icon */}
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-glow-sm transition-transform duration-300 group-hover:scale-105">
+            {/* Gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-orange-500 to-red-600" />
+            {/* CDB monogram */}
+            <span className="relative z-10 text-white font-black text-[13px] tracking-tight leading-none select-none">CDB</span>
           </div>
-          <span className="text-xl font-black tracking-tighter text-white" style={{ fontFamily: 'var(--font-heading)' }}>
-            Smart Nagar <span className="font-medium opacity-80">Reporting portal(<span className="text-red-300">SNRP</span>)</span>
-          </span>
+          {/* Brand Name */}
+          <div className="flex flex-col leading-tight">
+            <span
+              className="text-[18px] font-black tracking-tight text-white leading-none"
+              style={{ fontFamily: "'Montserrat', 'Inter', sans-serif", letterSpacing: '-0.02em' }}
+            >
+              CivicDrishti
+              <span className="ml-[5px] text-amber-300 font-extrabold" style={{ fontFamily: "'Montserrat', sans-serif" }}>Bharat</span>
+            </span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-red-200/80 leading-none mt-0.5">Urban AI Governance Platform</span>
+          </div>
         </Link>
 
         {/* Desktop */}

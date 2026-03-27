@@ -3,11 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2, ChevronLeft, ChevronRight, Eye, GitMerge, Activity } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import heroImage from '@/assets/hero-city.jpg';
-import diagramImage from '@/assets/civic-drishti-diagram.png';
-import processImage from '@/assets/process-architecture.png';
 
 const features = [
   { icon: Camera, title: 'AI Vision Detection', desc: 'Upload a photo and our AI instantly identifies potholes, garbage, drains & road damage with precision', gradient: 'from-primary/20 to-primary/5' },
@@ -33,37 +31,40 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+// Slides configuration — slides 2 & 3 use bgContent (JSX overlay) instead of a real image file.
+// Only slide 1 (the hero) uses a real image asset.
 const slides = [
   {
     image: heroImage,
+    useImage: true,
     title: (
       <span className="text-white drop-shadow-2xl">
         Rapid Issue<br />
         Resolution
       </span>
     ),
-    subtitle: "ACTIVE GOVERNANCE",
+    subtitle: "ACTIVE GOVERNANCE — CIVILDRISHTI BHARAT",
     subtitleColor: "text-amber-400 bg-amber-400/20 border-amber-400/40",
-    description: "CivicDrishti Bharat (CDB) uses computer vision to instantly detect civic infrastructure problems. Upload a photo → AI classifies it → Track resolution in real-time.",
-    showCard: true
+    showCard: true,
+    bg: ""
   },
   {
-    image: diagramImage,
-    title: "",
-    subtitle: "SYSTEM ARCHITECTURE",
+    // Slide 2: AI Flow — CSS gradient + icons, no image file needed
+    useImage: false,
+    title: null,
+    subtitle: "HOW CDB AI WORKS",
     subtitleColor: "text-emerald-400 bg-emerald-400/20 border-emerald-400/40",
-    description: "",
     showCard: false,
-    useFullImage: true
+    bg: "bg-gradient-to-br from-[#0a1a0f] via-[#0d2318] to-[#050d0a]"
   },
   {
-    image: processImage,
-    title: "",
-    subtitle: "PROCESS ARCHITECTURE",
+    // Slide 3: Platform Stats — CSS gradient, no image file needed
+    useImage: false,
+    title: null,
+    subtitle: "PLATFORM AT A GLANCE",
     subtitleColor: "text-blue-400 bg-blue-400/20 border-blue-400/40",
-    description: "",
     showCard: false,
-    useFullImage: true
+    bg: "bg-gradient-to-br from-[#050a1a] via-[#0a1030] to-[#07091f]"
   }
 ];
 
@@ -140,32 +141,109 @@ export default function Index() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] shadow-2xl border border-white/10"
+                className={`relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] shadow-2xl border border-white/10 ${!slides[currentSlide].useImage ? slides[currentSlide].bg : ''}`}
               >
-                {/* Background Image with Zoom Effect */}
-                <motion.img 
-                  initial={{ scale: 1.1 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 10, ease: "linear" }}
-                  src={slides[currentSlide].image} 
-                  alt="Slide Background" 
-                  className={`h-full w-full transition-all duration-1000 ${slides[currentSlide].useFullImage ? 'object-contain bg-[#0a0f18] p-4 sm:p-8' : 'object-cover opacity-90'}`}
-                />
+                {/* Slide 1: Real hero image background */}
+                {slides[currentSlide].useImage && slides[currentSlide].image && (
+                  <>
+                    <motion.img
+                      initial={{ scale: 1.1 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 10, ease: "linear" }}
+                      src={slides[currentSlide].image}
+                      alt="Slide Background"
+                      className="h-full w-full object-cover opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+                  </>
+                )}
 
-                {/* Content Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-                
+                {/* Slide 2: AI Flow — CSS-only content panel */}
+                {currentSlide === 1 && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 p-8">
+                    <div className="w-full max-w-3xl">
+                      <p className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400 mb-8">CivicDrishti Bharat — AI Processing Pipeline</p>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        {[
+                          { icon: Camera, label: 'Citizen', sub: 'Uploads Photo', color: 'from-emerald-500 to-emerald-700' },
+                          { icon: Eye, label: 'AI Vision', sub: 'Classifies Issue', color: 'from-blue-500 to-blue-700' },
+                          { icon: MapPin, label: 'GPS Tag', sub: 'Pinpoints Area', color: 'from-purple-500 to-purple-700' },
+                          { icon: GitMerge, label: 'Smart Route', sub: 'Assigns Engineer', color: 'from-orange-500 to-orange-700' },
+                          { icon: CheckCircle, label: 'Resolved', sub: 'Verified by AI', color: 'from-green-500 to-green-700' },
+                        ].map((step, i) => (
+                          <div key={i} className="flex flex-col items-center gap-2 flex-1 min-w-[80px]">
+                            <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg`}>
+                              <step.icon className="h-7 w-7 text-white" />
+                            </div>
+                            <p className="text-white font-black text-sm">{step.label}</p>
+                            <p className="text-white/60 text-[10px] font-bold text-center">{step.sub}</p>
+                            {i < 4 && <div className="hidden sm:block absolute" />}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-8 grid grid-cols-3 gap-4">
+                        {[
+                          { value: '98%', label: 'AI Accuracy', color: 'text-emerald-400' },
+                          { value: '<2hr', label: 'Avg Resolution', color: 'text-blue-400' },
+                          { value: '10K+', label: 'Issues Solved', color: 'text-amber-400' },
+                        ].map((stat, i) => (
+                          <div key={i} className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
+                            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mt-1">{stat.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Slide 3: Platform stats — CSS-only content panel */}
+                {currentSlide === 2 && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 p-8">
+                    <div className="w-full max-w-3xl text-center">
+                      <div className="mb-6">
+                        <div className="inline-flex items-center gap-3 mb-3">
+                          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center">
+                            <span className="text-white font-black text-lg">CDB</span>
+                          </div>
+                          <div className="text-left">
+                            <p className="text-white font-black text-2xl tracking-tight">CivicDrishti Bharat</p>
+                            <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Urban AI Governance Platform</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { value: '50+', label: 'Cities Active', icon: Building2, color: 'from-blue-500 to-blue-700' },
+                          { value: '99.98%', label: 'Platform Uptime', icon: Activity, color: 'from-emerald-500 to-green-700' },
+                          { value: '24/7', label: 'AI Monitoring', icon: Eye, color: 'from-purple-500 to-purple-700' },
+                          { value: '10K+', label: 'Complaints Resolved', icon: CheckCircle, color: 'from-amber-500 to-orange-600' },
+                        ].map((item, i) => (
+                          <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center mx-auto mb-3`}>
+                              <item.icon className="h-5 w-5 text-white" />
+                            </div>
+                            <p className="text-white font-black text-xl">{item.value}</p>
+                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mt-1">{item.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Subtitle badge overlay (all slides) */}
                 <div className="absolute bottom-12 left-12 z-20 max-w-2xl">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
-                    className={`mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black tracking-widest uppercase transition-colors duration-1000 ${slides[currentSlide].subtitleColor}`}
+                    className={`mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black tracking-widest uppercase ${slides[currentSlide].subtitleColor}`}
                   >
                     <Sparkles className="h-3 w-3" />
                     {slides[currentSlide].subtitle}
                   </motion.div>
-                  
+
                   {slides[currentSlide].title && (
                     <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter leading-[0.9] text-white drop-shadow-2xl">
                       {slides[currentSlide].title}
@@ -173,18 +251,21 @@ export default function Index() {
                   )}
                 </div>
 
-                {/* Primary CTA Button (Optional: overlay or below) */}
-                <div className="absolute bottom-12 right-12 z-20 hidden md:block">
-                  <Button 
-                    size="lg" 
-                    onClick={() => navigate('/register')}
-                    className="px-8 h-14 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest hover:shadow-glow transition-all"
-                  >
-                    Get Started <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </div>
+                {/* CTA Button (slide 1 only) */}
+                {slides[currentSlide].showCard && (
+                  <div className="absolute bottom-12 right-12 z-20 hidden md:block">
+                    <Button
+                      size="lg"
+                      onClick={() => navigate('/register')}
+                      className="px-8 h-14 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest hover:shadow-glow transition-all"
+                    >
+                      Get Started <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
+
 
             {/* Navigation Dots (Outside/Below Container) */}
             <div className="mt-8 flex justify-center gap-2.5">
