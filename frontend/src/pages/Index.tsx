@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Camera, MapPin, Zap, CheckCircle, BarChart3, ArrowRight, Sparkles, Building2, Trash2, ChevronLeft, ChevronRight, Eye, GitMerge, Activity } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import heroImage from '@/assets/hero-city.jpg';
 
 const features = [
   { icon: Camera, title: 'AI Vision Detection', desc: 'Upload a photo and our AI instantly identifies potholes, garbage, drains & road damage with precision', gradient: 'from-primary/20 to-primary/5' },
@@ -31,41 +30,68 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-// Slides configuration — slides 2 & 3 use bgContent (JSX overlay) instead of a real image file.
-// Only slide 1 (the hero) uses a real image asset.
+// Slides configuration — 4 real photo slides using user-provided images
 const slides = [
   {
-    image: heroImage,
+    image: '/carousel/slide-recycling.png',
     useImage: true,
+    overlayColor: 'bg-gradient-to-t from-green-900/80 via-black/30 to-transparent',
     title: (
       <span className="text-white drop-shadow-2xl">
-        Rapid Issue<br />
-        Resolution
+        Waste<br />
+        Management
       </span>
     ),
-    subtitle: "ACTIVE GOVERNANCE — CIVILDRISHTI BHARAT",
-    subtitleColor: "text-amber-400 bg-amber-400/20 border-amber-400/40",
+    subtitle: "CLEANER CITIES — CIVILDRISHTI BHARAT",
+    subtitleColor: "text-emerald-400 bg-emerald-400/20 border-emerald-400/40",
     showCard: true,
     bg: ""
   },
   {
-    // Slide 2: AI Flow — CSS gradient + icons, no image file needed
-    useImage: false,
-    title: null,
-    subtitle: "HOW CDB AI WORKS",
-    subtitleColor: "text-emerald-400 bg-emerald-400/20 border-emerald-400/40",
+    image: '/carousel/slide-pothole.png',
+    useImage: true,
+    overlayColor: 'bg-gradient-to-t from-orange-900/80 via-black/30 to-transparent',
+    title: (
+      <span className="text-white drop-shadow-2xl">
+        Road Repair<br />
+        Response
+      </span>
+    ),
+    subtitle: "RAPID FIELD ACTION — CIVILDRISHTI BHARAT",
+    subtitleColor: "text-orange-400 bg-orange-400/20 border-orange-400/40",
     showCard: false,
-    bg: "bg-gradient-to-br from-[#0a1a0f] via-[#0d2318] to-[#050d0a]"
+    bg: ""
   },
   {
-    // Slide 3: Platform Stats — CSS gradient, no image file needed
-    useImage: false,
-    title: null,
-    subtitle: "PLATFORM AT A GLANCE",
+    image: '/carousel/slide-drainage.png',
+    useImage: true,
+    overlayColor: 'bg-gradient-to-t from-blue-900/80 via-black/30 to-transparent',
+    title: (
+      <span className="text-white drop-shadow-2xl">
+        Water &<br />
+        Drainage
+      </span>
+    ),
+    subtitle: "WATERLOGGING RESOLVED — CIVILDRISHTI BHARAT",
     subtitleColor: "text-blue-400 bg-blue-400/20 border-blue-400/40",
     showCard: false,
-    bg: "bg-gradient-to-br from-[#050a1a] via-[#0a1030] to-[#07091f]"
-  }
+    bg: ""
+  },
+  {
+    image: '/carousel/slide-streetlight.png',
+    useImage: true,
+    overlayColor: 'bg-gradient-to-t from-purple-900/80 via-black/30 to-transparent',
+    title: (
+      <span className="text-white drop-shadow-2xl">
+        Smart Street<br />
+        Lighting
+      </span>
+    ),
+    subtitle: "INFRASTRUCTURE MONITORING — CIVILDRISHTI BHARAT",
+    subtitleColor: "text-purple-400 bg-purple-400/20 border-purple-400/40",
+    showCard: false,
+    bg: ""
+  },
 ];
 
 export default function Index() {
@@ -143,93 +169,20 @@ export default function Index() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className={`relative aspect-[21/9] w-full overflow-hidden rounded-[2.5rem] shadow-2xl border border-white/10 ${!slides[currentSlide].useImage ? slides[currentSlide].bg : ''}`}
               >
-                {/* Slide 1: Real hero image background */}
+                {/* Slide image background */}
                 {slides[currentSlide].useImage && slides[currentSlide].image && (
                   <>
                     <motion.img
-                      initial={{ scale: 1.1 }}
+                      key={slides[currentSlide].image}
+                      initial={{ scale: 1.06 }}
                       animate={{ scale: 1 }}
-                      transition={{ duration: 10, ease: "linear" }}
+                      transition={{ duration: 8, ease: "linear" }}
                       src={slides[currentSlide].image}
                       alt="Slide Background"
-                      className="h-full w-full object-cover opacity-90"
+                      className="h-full w-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+                    <div className={`absolute inset-0 ${slides[currentSlide].overlayColor || 'bg-gradient-to-t from-black/80 via-black/20 to-transparent'} z-10`} />
                   </>
-                )}
-
-                {/* Slide 2: AI Flow — CSS-only content panel */}
-                {currentSlide === 1 && (
-                  <div className="absolute inset-0 flex items-center justify-center z-10 p-8">
-                    <div className="w-full max-w-3xl">
-                      <p className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400 mb-8">CivicDrishti Bharat — AI Processing Pipeline</p>
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        {[
-                          { icon: Camera, label: 'Citizen', sub: 'Uploads Photo', color: 'from-emerald-500 to-emerald-700' },
-                          { icon: Eye, label: 'AI Vision', sub: 'Classifies Issue', color: 'from-blue-500 to-blue-700' },
-                          { icon: MapPin, label: 'GPS Tag', sub: 'Pinpoints Area', color: 'from-purple-500 to-purple-700' },
-                          { icon: GitMerge, label: 'Smart Route', sub: 'Assigns Engineer', color: 'from-orange-500 to-orange-700' },
-                          { icon: CheckCircle, label: 'Resolved', sub: 'Verified by AI', color: 'from-green-500 to-green-700' },
-                        ].map((step, i) => (
-                          <div key={i} className="flex flex-col items-center gap-2 flex-1 min-w-[80px]">
-                            <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg`}>
-                              <step.icon className="h-7 w-7 text-white" />
-                            </div>
-                            <p className="text-white font-black text-sm">{step.label}</p>
-                            <p className="text-white/60 text-[10px] font-bold text-center">{step.sub}</p>
-                            {i < 4 && <div className="hidden sm:block absolute" />}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-8 grid grid-cols-3 gap-4">
-                        {[
-                          { value: '98%', label: 'AI Accuracy', color: 'text-emerald-400' },
-                          { value: '<2hr', label: 'Avg Resolution', color: 'text-blue-400' },
-                          { value: '10K+', label: 'Issues Solved', color: 'text-amber-400' },
-                        ].map((stat, i) => (
-                          <div key={i} className="text-center p-4 rounded-xl bg-white/5 border border-white/10">
-                            <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
-                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mt-1">{stat.label}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Slide 3: Platform stats — CSS-only content panel */}
-                {currentSlide === 2 && (
-                  <div className="absolute inset-0 flex items-center justify-center z-10 p-8">
-                    <div className="w-full max-w-3xl text-center">
-                      <div className="mb-6">
-                        <div className="inline-flex items-center gap-3 mb-3">
-                          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center">
-                            <span className="text-white font-black text-lg">CDB</span>
-                          </div>
-                          <div className="text-left">
-                            <p className="text-white font-black text-2xl tracking-tight">CivicDrishti Bharat</p>
-                            <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Urban AI Governance Platform</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          { value: '50+', label: 'Cities Active', icon: Building2, color: 'from-blue-500 to-blue-700' },
-                          { value: '99.98%', label: 'Platform Uptime', icon: Activity, color: 'from-emerald-500 to-green-700' },
-                          { value: '24/7', label: 'AI Monitoring', icon: Eye, color: 'from-purple-500 to-purple-700' },
-                          { value: '10K+', label: 'Complaints Resolved', icon: CheckCircle, color: 'from-amber-500 to-orange-600' },
-                        ].map((item, i) => (
-                          <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center mx-auto mb-3`}>
-                              <item.icon className="h-5 w-5 text-white" />
-                            </div>
-                            <p className="text-white font-black text-xl">{item.value}</p>
-                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider mt-1">{item.label}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
                 )}
 
                 {/* Subtitle badge overlay (all slides) */}

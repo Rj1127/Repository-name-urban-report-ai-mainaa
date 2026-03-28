@@ -9,6 +9,7 @@ import complaintRoutes from "./routes/complaint.js";
 import engineerRoutes from "./routes/engineers.js";
 import leaveRoutes from "./routes/leave.js";
 import heatmapRoutes from "./routes/heatmap.js";
+import floodRiskRoutes from "./routes/floodRisk.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -51,6 +52,7 @@ app.use("/api/complaints", complaintRoutes);
 app.use("/api/engineers", engineerRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/heatmap", heatmapRoutes);
+app.use("/api/flood-risk", floodRiskRoutes);
 
 // Static files for documents
 app.use("/documents", express.static(path.join(__dirname, "public/documents")));

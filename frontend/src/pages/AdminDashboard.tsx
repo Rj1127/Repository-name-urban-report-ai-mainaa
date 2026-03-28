@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LeaveRequestsList } from '@/components/admin/LeaveRequestsList';
 import DisciplineModule from '@/components/admin/DisciplineModule';
 import HeatmapModule from '@/components/admin/HeatmapModule';
+import FloodRiskModule from '@/components/admin/FloodRiskModule';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -685,61 +686,8 @@ export default function AdminDashboard() {
 
             {/* 4. FLOOD RISK PREDICTOR */}
             {activeTab === 'flood-risk' && (
-              <div key="flood" className="space-y-6">
-                <div className="mb-8">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                    <Activity className="h-8 w-8 text-orange-500" /> Flood Risk Predictor
-                  </h1>
-                  <p className="text-muted-foreground mt-1 text-sm">AI-driven early warning system based on weather data and drainage topology.</p>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <Card className="lg:col-span-2 glass-panel border-orange-500/20 h-[500px] overflow-hidden">
-                    <CardHeader className="bg-orange-500/10 border-b border-orange-500/20">
-                      <CardTitle className="text-orange-500 flex items-center gap-2"><MapPin className="h-5 w-5" /> Risk Hotspots</CardTitle>
-                    </CardHeader>
-                    <div className="h-full relative z-0">
-                      <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <Circle center={[19.0760, 72.8777]} radius={50000} pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.3 }}>
-                          <Popup>Mumbai: Critical Flood Risk (High Tide)</Popup>
-                        </Circle>
-                        <Circle center={[22.5726, 88.3639]} radius={40000} pathOptions={{ color: 'orange', fillColor: 'orange', fillOpacity: 0.3 }}>
-                          <Popup>Kolkata: Moderate Risk (Heavy Rainfall predicted)</Popup>
-                        </Circle>
-                      </MapContainer>
-                    </div>
-                  </Card>
-
-                  <div className="space-y-6">
-                     <Card className="glass-panel border-red-500/30 bg-red-500/5">
-                        <CardHeader><CardTitle className="text-red-500 flex items-center gap-2"><AlertOctagon className="h-5 w-5" /> Critical Alert</CardTitle></CardHeader>
-                        <CardContent>
-                           <p className="text-sm font-bold text-foreground">Western Suburbs at 85% Risk level for coming 48 hours due to cyclonic circulation.</p>
-                           <Button className="w-full mt-4 bg-red-500 text-white hover:bg-red-600 font-bold">Issue Evacuation Advisory</Button>
-                        </CardContent>
-                     </Card>
-                     <Card className="glass-panel">
-                        <CardHeader><CardTitle className="text-lg font-bold">Prediction Logic</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                           <div className="flex justify-between items-center text-sm">
-                              <span>Rainfall Intensity</span>
-                              <Badge className="bg-red-100 text-red-600 border-none font-bold">Extreme</Badge>
-                           </div>
-                           <div className="flex justify-between items-center text-sm">
-                              <span>Drainage Capacity</span>
-                              <Badge className="bg-orange-100 text-orange-600 border-none font-bold">45%</Badge>
-                           </div>
-                           <div className="flex justify-between items-center text-sm">
-                              <span>Soil Moisture</span>
-                               <Badge className="bg-blue-100 text-blue-600 border-none font-bold">Saturated</Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              <FloodRiskModule apiUrl={import.meta.env.VITE_API_URL} />
+            )}
 
             {/* 5. LEAVE REQUESTS MANAGEMENT */}
             {activeTab === 'leave-requests' && (

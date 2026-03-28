@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shield, LogOut, LayoutDashboard, Menu, X, Landmark, User } from 'lucide-react';
+import { Shield, LogOut, Menu, X, User } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -22,12 +22,6 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const getDashboardPath = () => {
-    if (user?.role === 'admin') return '/admin';
-    if (user?.role === 'resolver') return '/resolver';
-    return '/dashboard';
-  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-red-900/40 bg-[#7a0000]/95 backdrop-blur-xl shadow-lg">
@@ -86,10 +80,6 @@ export default function Navbar() {
                   <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>View Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate(getDashboardPath())} className="cursor-pointer">
-                    <LayoutDashboard className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span>Report Civic Issues</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { logout(); navigate('/'); }} className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
