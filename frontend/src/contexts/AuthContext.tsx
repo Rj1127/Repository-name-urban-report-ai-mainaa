@@ -13,6 +13,15 @@ interface User {
   suspension_until?: string | Date | null;
   suspension_letter?: string | null;
   disciplinary_notice_url?: string | null;
+  suspension_appeal?: {
+    submitted: boolean;
+    statement: string | null;
+    supporting_document: string | null;
+    submitted_at: string | null;
+    status: 'Pending' | 'Approved' | 'Rejected';
+    admin_notes: string | null;
+    reviewed_at: string | null;
+  } | null;
 }
 
 interface AuthContextType {

@@ -3,7 +3,7 @@ import {
   Shield, Users, AlertTriangle, CheckCircle, 
   Search, MoreVertical, Eye, FileText,
   AlertOctagon, Ban, History, Download, 
-  Clock, Info, RefreshCw
+  Clock, Info, RefreshCw, RotateCcw, ClipboardCheck, XCircle, MessageSquare, ShieldOff
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,16 @@ interface Engineer {
   complianceScore: number;
   status: string;
   is_suspended: boolean;
+  suspension_until?: string | null;
+  suspension_appeal?: {
+    submitted: boolean;
+    statement: string | null;
+    supporting_document: string | null;
+    submitted_at: string | null;
+    status: 'Pending' | 'Approved' | 'Rejected';
+    admin_notes: string | null;
+    reviewed_at: string | null;
+  } | null;
   email: string;
   phone: string;
 }
@@ -80,6 +90,14 @@ export default function DisciplineModule() {
   const [logs, setLogs] = useState<DisciplinaryLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
+  // --- Appeal Review State ---
+  const [appealNotes, setAppealNotes] = useState('');
+  const [reviewingAppeal, setReviewingAppeal] = useState(false);
+
+  // --- Revoke Suspension State ---
+  const [revokeSuspensionReason, setRevokeSuspensionReason] = useState('');
+  const [revokingSuspension, setRevokingSuspension] = useState(false);
 
   useEffect(() => {
     fetchDisciplineData();
@@ -129,6 +147,53 @@ export default function DisciplineModule() {
       fetchDisciplineData();
     } catch (err: any) {
       toast.error(err.message);
+    }
+  };
+
+  const handleReviewAppeal = async (engineerId: string, action: 'approve' | 'reject') => {
+    setReviewingAppeal(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${apiUrl}/engineers/suspension/appeal/${engineerId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, admin_notes: appealNotes })
+      });
+      if (!res.ok) throw new Error('Appeal review failed');
+      if (action === 'approve') {
+        toast.success('✅ Appeal Approved. Suspension lifted — engineer account restored.');
+      } else {
+        toast.error('❌ Appeal Rejected. Suspension remains in effect.');
+      }
+      setAppealNotes('');
+      setDetailsModalOpen(false);
+      fetchDisciplineData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setReviewingAppeal(false);
+    }
+  };
+
+  const handleRevokeSuspension = async (engineerId: string) => {
+    if (!window.confirm('Are you sure you want to revoke this suspension? The engineer will immediately regain full access.')) return;
+    setRevokingSuspension(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${apiUrl}/engineers/${engineerId}/revoke-suspension`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: revokeSuspensionReason || 'Suspension revoked by administrator.' })
+      });
+      if (!res.ok) throw new Error('Failed to revoke suspension');
+      toast.success('✅ Suspension revoked. Engineer account fully restored.');
+      setRevokeSuspensionReason('');
+      setDetailsModalOpen(false);
+      fetchDisciplineData();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setRevokingSuspension(false);
     }
   };
 
@@ -261,12 +326,19 @@ export default function DisciplineModule() {
       </div>
 
       {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
           { label: 'Total Engineers', value: data.summary.totalEngineers, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
           { label: 'Violations Today', value: data.summary.violationsToday, icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10' },
           { label: 'Active Warnings', value: data.summary.activeWarnings, icon: AlertOctagon, color: 'text-red-500', bg: 'bg-red-500/10' },
           { label: 'Suspended Engineers', value: data.summary.suspendedEngineers, icon: Ban, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+          { 
+            label: 'Pending Appeals', 
+            value: engineers.filter((e: Engineer) => e.is_suspended && e.suspension_appeal?.submitted && e.suspension_appeal?.status === 'Pending').length,
+            icon: RotateCcw, 
+            color: 'text-amber-500', 
+            bg: 'bg-amber-500/10' 
+          },
         ].map((stat, i) => (
           <Card key={i} className="glass-panel border-border/40 hover:border-border transition-all group overflow-hidden relative">
             <div className={`absolute top-0 right-0 w-16 h-16 ${stat.bg} rounded-bl-full opacity-50 group-hover:scale-110 transition-transform`} />
@@ -444,6 +516,58 @@ export default function DisciplineModule() {
                 </div>
              </div>
 
+             {/* REVOKE SUSPENSION SECTION — shown prominently when engineer is suspended */}
+             {selectedEngineer?.is_suspended && (
+               <div className="mt-4 p-5 rounded-2xl border-2 border-red-500/40 bg-red-500/5">
+                 <div className="flex items-center gap-3 mb-4">
+                   <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                     <ShieldOff className="h-5 w-5 text-destructive" />
+                   </div>
+                   <div>
+                     <h3 className="text-sm font-black uppercase tracking-widest text-destructive">Revoke Suspension</h3>
+                     <p className="text-[10px] text-muted-foreground font-medium">Admin override — immediately restores engineer access</p>
+                   </div>
+                   {selectedEngineer.suspension_until && (
+                     <div className="ml-auto text-right">
+                       <p className="text-[9px] font-black uppercase text-destructive/70">Suspended Until</p>
+                       <p className="text-xs font-black text-destructive">
+                         {new Date(selectedEngineer.suspension_until).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                       </p>
+                     </div>
+                   )}
+                 </div>
+
+                 <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 mb-4">
+                   <p className="text-[10px] font-bold text-destructive leading-relaxed">
+                     ⚠️ Revoking this suspension will: Restore login access · Set status to Available · Clear all suspension flags · Mark any pending appeal as Approved
+                   </p>
+                 </div>
+
+                 <div className="space-y-3">
+                   <div>
+                     <label className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Reason for Revocation (Optional)</label>
+                     <textarea
+                       value={revokeSuspensionReason}
+                       onChange={(e) => setRevokeSuspensionReason(e.target.value)}
+                       placeholder="Enter the reason you are revoking this suspension (e.g., new evidence, disciplinary period served early, administrative decision)..."
+                       className="w-full h-20 bg-secondary/30 border border-destructive/30 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-destructive focus:outline-none transition-all resize-none"
+                     />
+                   </div>
+                   <Button
+                     disabled={revokingSuspension}
+                     onClick={() => handleRevokeSuspension(selectedEngineer.id || selectedEngineer._id)}
+                     className="w-full h-11 bg-destructive hover:bg-destructive/80 text-white font-black uppercase tracking-widest text-xs shadow-glow-destructive"
+                   >
+                     {revokingSuspension ? (
+                       <span className="flex items-center gap-2"><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</span>
+                     ) : (
+                       <span className="flex items-center gap-2"><ShieldOff className="h-4 w-4" /> Revoke Suspension & Restore Access</span>
+                     )}
+                   </Button>
+                 </div>
+               </div>
+             )}
+
              <div className="space-y-6">
                 <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
                    <History className="h-4 w-4" /> Disciplinary Timeline
@@ -516,6 +640,96 @@ export default function DisciplineModule() {
                    </div>
                 )}
              </div>
+
+             {/* SUSPENSION APPEAL REVIEW PANEL */}
+             {selectedEngineer?.is_suspended && selectedEngineer?.suspension_appeal?.submitted && (
+               <div className="mt-6 p-5 rounded-2xl border-2 border-amber-500/30 bg-amber-500/5">
+                 <div className="flex items-center gap-2 mb-4">
+                   <RotateCcw className="h-5 w-5 text-amber-500" />
+                   <h3 className="text-xs font-black uppercase tracking-widest text-amber-500">Suspension Withdrawal Appeal</h3>
+                   <Badge className={`ml-auto text-[10px] font-black uppercase ${
+                     selectedEngineer.suspension_appeal.status === 'Pending' ? 'bg-amber-500/20 text-amber-500 border-amber-500/30'
+                     : selectedEngineer.suspension_appeal.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30'
+                     : 'bg-destructive/20 text-destructive border-destructive/30'
+                   }`}>
+                     {selectedEngineer.suspension_appeal.status}
+                   </Badge>
+                 </div>
+
+                 {/* Engineer's statement */}
+                 <div className="p-3 bg-secondary/30 rounded-xl border border-border/30 mb-4">
+                   <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 flex items-center gap-1">
+                     <MessageSquare className="h-3 w-3" /> Engineer's Appeal Statement
+                   </p>
+                   <p className="text-sm font-medium text-foreground leading-relaxed italic">
+                     "{selectedEngineer.suspension_appeal.statement || '(No statement provided)'}"
+                   </p>
+                   {selectedEngineer.suspension_appeal.submitted_at && (
+                     <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
+                       <Clock className="h-3 w-3" /> Submitted on {new Date(selectedEngineer.suspension_appeal.submitted_at).toLocaleDateString()}
+                     </p>
+                   )}
+                 </div>
+
+                 {/* Supporting document */}
+                 {selectedEngineer.suspension_appeal.supporting_document && (
+                   <div className="rounded-xl overflow-hidden border border-amber-500/20 mb-4">
+                     <img 
+                       src={selectedEngineer.suspension_appeal.supporting_document} 
+                       alt="Supporting Document"
+                       className="w-full h-40 object-cover"
+                     />
+                     <p className="text-[10px] text-center text-muted-foreground font-bold py-2 bg-secondary/30 uppercase tracking-widest">Attached Supporting Document</p>
+                   </div>
+                 )}
+
+                 {/* Decision panel — only show if still pending */}
+                 {selectedEngineer.suspension_appeal.status === 'Pending' ? (
+                   <div className="space-y-3">
+                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Admin Decision Required:</p>
+                     <div>
+                       <label className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Admin Notes (Optional)</label>
+                       <textarea
+                         value={appealNotes}
+                         onChange={(e) => setAppealNotes(e.target.value)}
+                         placeholder="Add notes for the engineer explaining your decision..."
+                         className="w-full h-20 bg-secondary/30 border border-border/40 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none transition-all resize-none"
+                       />
+                     </div>
+                     <div className="flex gap-2">
+                       <Button
+                         size="sm"
+                         disabled={reviewingAppeal}
+                         onClick={() => handleReviewAppeal(selectedEngineer.id || selectedEngineer._id, 'approve')}
+                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 text-[10px] uppercase tracking-wider"
+                       >
+                         <ClipboardCheck className="h-4 w-4 mr-1" /> Approve — Lift Suspension
+                       </Button>
+                       <Button
+                         size="sm"
+                         disabled={reviewingAppeal}
+                         onClick={() => handleReviewAppeal(selectedEngineer.id || selectedEngineer._id, 'reject')}
+                         variant="destructive"
+                         className="flex-1 font-bold h-10 text-[10px] uppercase tracking-wider"
+                       >
+                         <XCircle className="h-4 w-4 mr-1" /> Reject Appeal
+                       </Button>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className={`p-3 rounded-xl border ${
+                     selectedEngineer.suspension_appeal.status === 'Approved'
+                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                       : 'bg-destructive/10 border-destructive/30 text-destructive'
+                   } text-xs font-bold`}>
+                     {selectedEngineer.suspension_appeal.status === 'Approved' ? '✅ This appeal was approved. Suspension has been lifted.' : '❌ This appeal was rejected.'}
+                     {selectedEngineer.suspension_appeal.admin_notes && (
+                       <p className="text-muted-foreground font-medium mt-1 italic">Notes: "{selectedEngineer.suspension_appeal.admin_notes}"</p>
+                     )}
+                   </div>
+                 )}
+               </div>
+             )}
 
              <div className="mt-8 p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex items-start gap-4 text-left">
                 <Info className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />

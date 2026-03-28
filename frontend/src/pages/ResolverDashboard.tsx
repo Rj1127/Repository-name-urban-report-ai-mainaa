@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info, FileText, Download } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, MapPin, Upload, Camera, AlertTriangle, Hash, ShieldAlert, MessageSquare, Info, FileText, Download, Send, ClipboardCheck, XCircle, RotateCcw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,12 @@ export default function ResolverDashboard() {
   const [noticeResponse, setNoticeResponse] = useState('');
   const [evidenceImage, setEvidenceImage] = useState<string | null>(null);
   const [submittingNotice, setSubmittingNotice] = useState(false);
+
+  // Suspension Appeal Flow
+  const [appealStatement, setAppealStatement] = useState('');
+  const [appealDocument, setAppealDocument] = useState<string | null>(null);
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
+  const [appealSubmitted, setAppealSubmitted] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -146,6 +152,32 @@ export default function ResolverDashboard() {
     }
   };
 
+  const submitSuspensionAppeal = async () => {
+    if (!appealStatement.trim()) return toast.error('Please provide a formal appeal statement');
+    setSubmittingAppeal(true);
+    try {
+      const engineerId = user?._id || user?.id;
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/suspension/appeal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engineer_id: engineerId,
+          statement: appealStatement,
+          supporting_document: appealDocument || null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Appeal submission failed');
+      toast.success('✅ Appeal submitted. Admin will review your request.');
+      setAppealSubmitted(true);
+      setAppealStatement('');
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSubmittingAppeal(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -154,44 +186,154 @@ export default function ResolverDashboard() {
         <DashboardSidebar />
         
         {user?.is_suspended && (
-          <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full glass-strong border-2 border-destructive p-8 rounded-3xl text-center shadow-glow-destructive">
-               <ShieldAlert className="h-16 w-16 text-destructive mx-auto mb-6" />
-               <h1 className="text-3xl font-black text-foreground uppercase tracking-tighter mb-2">Account Suspended</h1>
-               <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-6">Disciplinary Action in Effect</p>
-               
-               <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5 mb-8 text-left">
-                  <p className="text-xs font-bold text-destructive flex items-center gap-2 mb-2 uppercase">
-                    <Clock className="h-4 w-4" /> Period Active Until:
-                  </p>
-                  <p className="text-lg font-black text-foreground">
-                    {new Date(user.suspension_until || '').toLocaleString()}
-                  </p>
-               </div>
+          <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-6 overflow-y-auto">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-lg w-full glass-strong border-2 border-destructive rounded-3xl shadow-glow-destructive my-6">
+              
+              {/* Header */}
+              <div className="p-8 pb-4 text-center">
+                <ShieldAlert className="h-14 w-14 text-destructive mx-auto mb-4" />
+                <h1 className="text-2xl font-black text-foreground uppercase tracking-tighter mb-1">Account Suspended</h1>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Disciplinary Action In Effect</p>
+              </div>
 
-               <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-                  Your access to the Operational Terminal has been restricted following an official review of your performance metrics. Please refer to the formal suspension order for details.
-               </p>
+              <div className="px-8 pb-4 space-y-4">
+                {/* Suspension period */}
+                <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 text-left">
+                  <p className="text-[10px] font-black text-destructive flex items-center gap-2 mb-1 uppercase">
+                    <Clock className="h-3 w-3" /> Suspended Until:
+                  </p>
+                  <p className="text-base font-black text-foreground">
+                    {new Date(user.suspension_until || '').toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
 
-               <div className="flex flex-col gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => user.disciplinary_notice_url && window.open(`${import.meta.env.VITE_API_BASE_URL}${user.disciplinary_notice_url}`)}
-                    className="h-12 border-destructive/30 text-destructive font-black uppercase tracking-widest hover:bg-destructive/10"
+                {/* Download documents */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => user.disciplinary_notice_url && window.open(`${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api','')}${user.disciplinary_notice_url}`)}
+                    className="flex-1 h-10 border-destructive/30 text-destructive font-black text-[10px] uppercase tracking-wider hover:bg-destructive/10"
                   >
-                     <Download className="h-4 w-4 mr-2" /> Download Official Notice (JPG)
+                    <Download className="h-3 w-3 mr-1" /> Notice (JPG)
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => user.suspension_letter && window.open(`${import.meta.env.VITE_API_BASE_URL}${user.suspension_letter}`)}
-                    className="h-12 border-destructive/30 text-destructive font-black uppercase tracking-widest hover:bg-destructive/10"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => user.suspension_letter && window.open(`${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api','')}${user.suspension_letter}`)}
+                    className="flex-1 h-10 border-destructive/30 text-destructive font-black text-[10px] uppercase tracking-wider hover:bg-destructive/10"
                   >
-                     <FileText className="h-4 w-4 mr-2" /> Download Suspension Order (PDF)
+                    <FileText className="h-3 w-3 mr-1" /> Order (PDF)
                   </Button>
-                  <Button variant="ghost" className="font-bold text-muted-foreground uppercase text-xs" onClick={() => window.location.href='/'}>
-                     Exit Terminal
-                  </Button>
-               </div>
+                </div>
+
+                {/* APPEAL SECTION */}
+                <div className="border-t border-border/40 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <RotateCcw className="h-4 w-4 text-amber-500" />
+                    <p className="text-xs font-black uppercase tracking-widest text-amber-500">Appeal for Suspension Withdrawal</p>
+                  </div>
+
+                  {/* Show current appeal status if already submitted */}
+                  {user?.suspension_appeal?.submitted ? (
+                    <div className={`p-4 rounded-2xl border-2 ${
+                      user.suspension_appeal.status === 'Approved'
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : user.suspension_appeal.status === 'Rejected'
+                        ? 'bg-destructive/10 border-destructive/30'
+                        : 'bg-amber-500/10 border-amber-500/30'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {user.suspension_appeal.status === 'Approved' && <ClipboardCheck className="h-5 w-5 text-emerald-500" />}
+                        {user.suspension_appeal.status === 'Rejected' && <XCircle className="h-5 w-5 text-destructive" />}
+                        {user.suspension_appeal.status === 'Pending' && <Clock className="h-5 w-5 text-amber-500 animate-pulse" />}
+                        <p className={`text-xs font-black uppercase tracking-widest ${
+                          user.suspension_appeal.status === 'Approved' ? 'text-emerald-500'
+                          : user.suspension_appeal.status === 'Rejected' ? 'text-destructive'
+                          : 'text-amber-500'
+                        }`}>
+                          Appeal {user.suspension_appeal.status}
+                        </p>
+                      </div>
+                      {user.suspension_appeal.status === 'Pending' && (
+                        <p className="text-xs text-muted-foreground font-medium">Your appeal is under review by the admin. You will be notified once a decision is made.</p>
+                      )}
+                      {user.suspension_appeal.status === 'Approved' && (
+                        <p className="text-xs text-emerald-600 font-bold">🎉 Your appeal was approved! Your suspension has been withdrawn. Please re-login to access the system.</p>
+                      )}
+                      {user.suspension_appeal.status === 'Rejected' && (
+                        <div>
+                          <p className="text-xs text-destructive font-bold mb-1">Your appeal was rejected. Suspension remains active.</p>
+                          {user.suspension_appeal.admin_notes && (
+                            <p className="text-xs text-muted-foreground italic">Admin notes: "{user.suspension_appeal.admin_notes}"</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Appeal submission form */
+                    <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        If you believe the suspension is unjust or you have corrective documentation, submit a formal appeal below. The admin will review and may withdraw your suspension early.
+                      </p>
+
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Formal Appeal Statement *</label>
+                        <textarea
+                          value={appealStatement}
+                          onChange={(e) => setAppealStatement(e.target.value)}
+                          placeholder="Provide a detailed explanation of why your suspension should be reconsidered. Include any relevant corrective actions taken, new evidence, or extenuating circumstances..."
+                          className="w-full h-28 bg-secondary/30 border border-amber-500/30 rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none transition-all resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Supporting Document (Optional)</label>
+                        {appealDocument ? (
+                          <div className="relative rounded-xl overflow-hidden border border-amber-500/30 group h-28">
+                            <img src={appealDocument} alt="Supporting Document" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <Button variant="secondary" size="sm" onClick={() => setAppealDocument(null)}>Remove</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex h-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-all">
+                            <Camera className="mb-1 h-6 w-6 text-amber-500 opacity-80" />
+                            <span className="text-[10px] font-black text-amber-600 uppercase">Attach Proof / Certificate</span>
+                            <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => setAppealDocument(reader.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }} />
+                          </label>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={submitSuspensionAppeal}
+                        disabled={submittingAppeal || !appealStatement.trim()}
+                        className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-widest text-xs shadow-lg"
+                      >
+                        {submittingAppeal ? (
+                          <span className="flex items-center gap-2"><div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</span>
+                        ) : (
+                          <span className="flex items-center gap-2"><Send className="h-4 w-4" /> Submit Formal Appeal</span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 pt-2 border-t border-border/30">
+                <Button variant="ghost" className="w-full font-bold text-muted-foreground uppercase text-xs" onClick={() => window.location.href='/'}>
+                  Exit Terminal
+                </Button>
+              </div>
             </motion.div>
           </div>
         )}

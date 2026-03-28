@@ -124,6 +124,8 @@ router.get("/discipline", async (req, res) => {
                 complianceScore,
                 status,
                 is_suspended: eng.is_suspended || false,
+                suspension_until: eng.suspension_until || null,
+                suspension_appeal: eng.suspension_appeal || null,
                 email: eng.email,
                 phone: eng.phone
             };
@@ -172,6 +174,138 @@ router.get("/discipline/:id/logs", async (req, res) => {
             .populate("complaint_id", "reference_number issue_type status")
             .sort({ created_at: -1 });
         res.json(notices);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// RETURN ENGINEER TO WORK (Admin clears On Leave status)
+router.patch("/:id/return-to-work", async (req, res) => {
+    try {
+        const engineer = await User.findById(req.params.id);
+        if (!engineer) return res.status(404).json({ error: "Engineer not found" });
+
+        await User.findByIdAndUpdate(req.params.id, {
+            activity_status: "Available"
+        });
+
+        res.json({ message: `${engineer.name} has been returned to active duty.` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// REVOKE SUSPENSION (Admin directly lifts suspension, bypassing appeal flow)
+router.post("/:id/revoke-suspension", async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const engineer = await User.findById(req.params.id);
+        if (!engineer) return res.status(404).json({ error: "Engineer not found" });
+        if (!engineer.is_suspended) return res.status(400).json({ error: "Engineer is not currently suspended" });
+
+        await User.findByIdAndUpdate(req.params.id, {
+            is_suspended: false,
+            suspension_until: null,
+            login_disabled: false,
+            login_disabled_reason: null,
+            activity_status: "Available",
+            // Update appeal status if one was pending
+            "suspension_appeal.status": "Approved",
+            "suspension_appeal.admin_notes": reason || "Suspension revoked by administrator.",
+            "suspension_appeal.reviewed_at": new Date()
+        });
+
+        res.json({ message: `Suspension for ${engineer.name} has been revoked. Account restored.` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// SUBMIT SUSPENSION APPEAL (Engineer files an appeal to withdraw their suspension)
+router.post("/suspension/appeal", async (req, res) => {
+    try {
+        const { engineer_id, statement, supporting_document } = req.body;
+        if (!engineer_id || !statement) {
+            return res.status(400).json({ error: "engineer_id and statement are required" });
+        }
+
+        const engineer = await User.findById(engineer_id);
+        if (!engineer) return res.status(404).json({ error: "Engineer not found" });
+        if (!engineer.is_suspended) return res.status(400).json({ error: "Engineer is not currently suspended" });
+
+        // Check if there's already a pending appeal
+        if (engineer.suspension_appeal?.submitted && engineer.suspension_appeal?.status === 'Pending') {
+            return res.status(400).json({ error: "An appeal is already pending review by admin" });
+        }
+
+        await User.findByIdAndUpdate(engineer_id, {
+            suspension_appeal: {
+                submitted: true,
+                statement,
+                supporting_document: supporting_document || null,
+                submitted_at: new Date(),
+                status: 'Pending',
+                admin_notes: null,
+                reviewed_at: null
+            }
+        });
+
+        res.json({ message: "Suspension appeal submitted successfully. Admin will review it shortly." });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// REVIEW SUSPENSION APPEAL (Admin approves or rejects the engineer's appeal)
+router.post("/suspension/appeal/:engineer_id/review", async (req, res) => {
+    try {
+        const { action, admin_notes } = req.body; // action: 'approve' | 'reject'
+        if (!action || !['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ error: "action must be 'approve' or 'reject'" });
+        }
+
+        const engineer = await User.findById(req.params.engineer_id);
+        if (!engineer) return res.status(404).json({ error: "Engineer not found" });
+        if (!engineer.suspension_appeal?.submitted) {
+            return res.status(400).json({ error: "No appeal found for this engineer" });
+        }
+
+        if (action === 'approve') {
+            // Lift the suspension entirely
+            await User.findByIdAndUpdate(req.params.engineer_id, {
+                is_suspended: false,
+                suspension_until: null,
+                login_disabled: false,
+                login_disabled_reason: null,
+                activity_status: "Available",
+                "suspension_appeal.status": "Approved",
+                "suspension_appeal.admin_notes": admin_notes || "Appeal approved. Suspension withdrawn.",
+                "suspension_appeal.reviewed_at": new Date()
+            });
+            res.json({ message: "Appeal approved. Suspension has been lifted. Engineer account restored." });
+        } else {
+            // Reject appeal — suspension remains
+            await User.findByIdAndUpdate(req.params.engineer_id, {
+                "suspension_appeal.status": "Rejected",
+                "suspension_appeal.admin_notes": admin_notes || "Appeal rejected. Suspension remains in effect.",
+                "suspension_appeal.reviewed_at": new Date()
+            });
+            res.json({ message: "Appeal rejected. Suspension remains in effect until the original end date." });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET PENDING APPEALS (Admin dashboard summary)
+router.get("/suspension/appeals", async (req, res) => {
+    try {
+        const engineers = await User.find({
+            is_suspended: true,
+            "suspension_appeal.submitted": true,
+            "suspension_appeal.status": "Pending"
+        }).select("name email dept_name suspension_until suspension_appeal").lean();
+        res.json(engineers);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

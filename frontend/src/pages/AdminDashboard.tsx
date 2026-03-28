@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText, Trash2, Calendar, X, Edit } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, Clock, MapPin, Activity, Shield, Hash, Search, BarChart3, Map as MapIcon, TrendingUp, AlertOctagon, FileText, Trash2, Calendar, X, Edit, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -160,6 +160,22 @@ export default function AdminDashboard() {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error("Failed to remove engineer");
       toast.success("Engineer record deleted");
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleReturnToWork = async (id: string, name: string) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/engineers/${id}/return-to-work`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update status');
+      toast.success(`✅ ${name} has been returned to active duty.`);
+      setEngineerModalOpen(false);
       fetchData();
     } catch (err: any) {
       toast.error(err.message);
@@ -998,17 +1014,28 @@ export default function AdminDashboard() {
                   </div>
                </div>
 
-               <div className="flex gap-3 pt-2">
-                 <Button onClick={() => setEngineerModalOpen(false)} className="flex-1 bg-secondary text-foreground hover:bg-secondary/80 font-bold">
-                    Close Profile
-                 </Button>
-                 <Button 
-                   onClick={() => handleDeleteEngineer(viewingEngineer.id || viewingEngineer._id, viewingEngineer.name)} 
-                   variant="destructive"
-                   className="flex-1 font-bold shadow-glow-destructive"
-                 >
-                    <Trash2 className="h-4 w-4 mr-2" /> Remove Engineer
-                 </Button>
+               <div className="flex flex-col gap-2 pt-2">
+                 {/* Return to Work button — only shown when engineer is On Leave */}
+                 {viewingEngineer.activity_status === 'On Leave' && (
+                   <Button
+                     onClick={() => handleReturnToWork(viewingEngineer.id || viewingEngineer._id, viewingEngineer.name)}
+                     className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-xs shadow-lg"
+                   >
+                     <UserCheck className="h-4 w-4 mr-2" /> Return to Work / Remove Leave
+                   </Button>
+                 )}
+                 <div className="flex gap-3">
+                   <Button onClick={() => setEngineerModalOpen(false)} className="flex-1 bg-secondary text-foreground hover:bg-secondary/80 font-bold">
+                      Close Profile
+                   </Button>
+                   <Button 
+                     onClick={() => handleDeleteEngineer(viewingEngineer.id || viewingEngineer._id, viewingEngineer.name)} 
+                     variant="destructive"
+                     className="flex-1 font-bold shadow-glow-destructive"
+                   >
+                      <Trash2 className="h-4 w-4 mr-2" /> Remove Engineer
+                   </Button>
+                 </div>
                </div>
             </div>
           )}

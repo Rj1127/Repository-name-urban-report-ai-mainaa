@@ -21,7 +21,17 @@ const userSchema = new mongoose.Schema({
     disciplinary_notice_url: { type: String, default: null },
     // --- Disciplinary: Set to true when engineer is suspended to block next login ---
     login_disabled: { type: Boolean, default: false },
-    login_disabled_reason: { type: String, default: null }
+    login_disabled_reason: { type: String, default: null },
+    // --- Suspension Appeal: Filed by engineer to request early reinstatement ---
+    suspension_appeal: {
+        submitted: { type: Boolean, default: false },
+        statement: { type: String, default: null },
+        supporting_document: { type: String, default: null }, // base64 or URL
+        submitted_at: { type: Date, default: null },
+        status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+        admin_notes: { type: String, default: null },
+        reviewed_at: { type: Date, default: null }
+    }
 });
 
 export default mongoose.model("User", userSchema);
