@@ -6,3 +6,8 @@ start-mongo.bat
 setup-mongo.ps1
 mongo_error.txt
 mongod.log
+
+# Environment files
+.env
+.env.local
+.env.*
