@@ -2,11 +2,14 @@ import mongoose from "mongoose";
 
 const connectDB = async () => {
     try {
-        const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/urban_ai";
-        await mongoose.connect(uri);
-        console.log("✅ MongoDB Connected");
-    } catch (err) {
-        console.error("❌ MongoDB Connection Failed:", err.message);
+        const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+        if (!uri) {
+            throw new Error("MongoDB URI missing! Check MONGO_URI or MONGODB_URI in your .env file.");
+        }
+        const conn = await mongoose.connect(uri);
+        console.log(`✅ MongoDB Atlas Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`❌ MongoDB Atlas Connection Error: ${error.message}`);
         process.exit(1);
     }
 };

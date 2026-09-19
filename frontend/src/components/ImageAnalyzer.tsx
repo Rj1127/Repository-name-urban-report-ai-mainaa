@@ -4,6 +4,7 @@ import { Upload, Camera, Loader2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { IssueType } from '@/types/database';
+import { getApiUrl, safeFetchJson } from '@/lib/api';
 
 interface Props {
   onAnalysisComplete: (result: {
@@ -121,16 +122,15 @@ export default function ImageAnalyzer({ onAnalysisComplete }: Props) {
     setRejected(null);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/analyze-image`, {
+      const targetUrl = getApiUrl('/complaints/analyze-image');
+      const { ok, data, error } = await safeFetchJson(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: preview })
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRejected(data.error || "Failed to analyze image with AI.");
+      if (!ok || !data) {
+        setRejected(error || "Failed to analyze image with AI.");
         setAnalyzing(false);
         return;
       }

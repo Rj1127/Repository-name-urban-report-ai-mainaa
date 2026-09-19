@@ -31,8 +31,8 @@ app.use((req, res, next) => {
 // Root route
 app.get("/", (req, res) => {
     console.log("Root route hit!");
-    res.json({ 
-        message: "UrbanReport AI Backend is running!",
+    res.json({
+        message: "UrbanReport AI Backend is running with MongoDB Atlas!",
         version: "1.0.0",
         status: "Online"
     });
@@ -40,13 +40,14 @@ app.get("/", (req, res) => {
 
 // Health check
 app.get("/api/health", (req, res) => {
-    res.json({ 
+    res.json({
         status: "UP",
         timestamp: new Date().toISOString(),
         mongodb: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
     });
 });
 
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/engineers", engineerRoutes);
@@ -60,10 +61,10 @@ app.use("/documents", express.static(path.join(__dirname, "public/documents")));
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err);
-    res.status(500).json({ 
-        error: "Internal Server Error", 
+    res.status(500).json({
+        error: "Internal Server Error",
         message: err.message,
-        path: req.url 
+        path: req.url
     });
 });
 

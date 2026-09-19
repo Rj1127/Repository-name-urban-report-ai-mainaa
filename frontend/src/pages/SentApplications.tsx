@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import SafeImage from '@/components/SafeImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -108,12 +109,10 @@ export default function SentApplications() {
                                     <motion.div key={c.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} layout>
                                         <Card className="glass-panel overflow-hidden border-border/40 hover:border-primary/30 transition-colors">
                                             <div className="p-5 flex flex-col md:flex-row gap-5 items-start">
-                                                {c.before_image && (
                                                     <div className="w-full md:w-40 h-32 shrink-0 rounded-xl overflow-hidden border border-border/50 relative group">
-                                                        <img src={c.before_image} alt="Issue" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                        <SafeImage src={c.before_image} alt="Issue" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                         <div className="absolute top-1 left-1">{getSeverityBadge(c.severity)}</div>
                                                     </div>
-                                                )}
                                                 <div className="flex-1 min-w-0 w-full">
                                                     <div className="flex justify-between items-start mb-2">
                                                         <div>

@@ -595,7 +595,16 @@ export default function DisciplineModule() {
                                </div>
                                <p className="text-xs text-muted-foreground mb-2 italic">Notice: "{log.message}"</p>
                                {log.responded && (
-                                 <div className="mt-3 p-3 bg-secondary/30 rounded-xl border border-border/30">
+                                 <div className={`mt-3 p-4 rounded-2xl border-2 transition-all ${
+                                   log.admin_decision === 'Pending' || !log.admin_decision 
+                                     ? 'bg-red-600/15 border-red-500 shadow-xl shadow-red-600/20' 
+                                     : 'bg-secondary/30 border-border/30'
+                                 }`}>
+                                   {(log.admin_decision === 'Pending' || !log.admin_decision) && (
+                                     <div className="flex items-center gap-2 mb-3 bg-red-600 text-white p-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider animate-pulse shadow-md shadow-red-600/40">
+                                       <AlertTriangle className="h-4 w-4 shrink-0" /> ENGINEER RESPONDED — IMMEDIATE REVIEW REQUIRED
+                                     </div>
+                                   )}
                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Engineer Justification:</p>
                                    <p className="text-xs font-medium italic mb-3">"{log.reason}"</p>
                                    {log.evidence_image && (
@@ -603,7 +612,7 @@ export default function DisciplineModule() {
                                        <img src={log.evidence_image} alt="Site Proof" className="w-full h-32 object-cover" />
                                      </div>
                                    )}
-                                    {log.admin_decision === 'Pending' && (
+                                    {(log.admin_decision === 'Pending' || !log.admin_decision) && (
                                       // --- Two-button Satisfy / Not Satisfy decision panel ---
                                       <div className="space-y-3 mt-4">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Admin Decision Required:</p>

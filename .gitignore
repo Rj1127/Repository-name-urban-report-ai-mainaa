@@ -1,4 +1,30 @@
+# Dependencies
+node_modules/
+**/node_modules/
 
+# Environment & Secret files (EXCLUDED FROM GIT)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build and Output directories
+dist/
+build/
+**/dist/
+**/build/
+
+# System and Log files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local MongoDB and Scratch files
 .mongo_local/
 mongodata/
 local-mongo/
@@ -6,8 +32,11 @@ start-mongo.bat
 setup-mongo.ps1
 mongo_error.txt
 mongod.log
+check_lines.txt
+fix_jsx_2.ps1
+query
 
-# Environment files
-.env
-.env.local
-.env.*
+# Generated PDF/JPG Documents
+public/documents/*
+!public/documents/.gitkeep
+**/public/documents/*

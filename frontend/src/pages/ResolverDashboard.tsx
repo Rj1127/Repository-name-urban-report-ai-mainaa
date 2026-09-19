@@ -130,7 +130,7 @@ export default function ResolverDashboard() {
 
     setSubmittingNotice(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/complaints/notices/${selectedNotice._id}/respond`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/complaints/notices/${selectedNotice._id}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -144,7 +144,10 @@ export default function ResolverDashboard() {
       toast.success("Explanation submitted to Command Center.");
       setNoticeModalOpen(false);
       setNoticeResponse('');
-      fetchNotices();
+      setSelectedNotice(null);
+      await fetchNotices();
+      await fetchTasks();
+      setActiveTab('assignments');
     } catch (err: any) {
       toast.error(err.message);
     } finally {

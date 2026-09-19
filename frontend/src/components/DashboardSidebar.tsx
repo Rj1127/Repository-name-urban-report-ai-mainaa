@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { User, FileText, Edit, Key, LogOut, LayoutDashboard, Building2, Shield, Users, Activity, Map, BarChart3, Wrench, Calendar, ClipboardCheck, Bell, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,6 +9,28 @@ export default function DashboardSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
+  const [hasPendingDiscipline, setHasPendingDiscipline] = useState(false);
+
+  useEffect(() => {
+    const checkDisciplineNotices = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+        const res = await fetch(`${apiUrl}/complaints/notices/all`);
+        if (res.ok) {
+          const notices = await res.json();
+          const pending = Array.isArray(notices) && notices.some(n => 
+            n.responded && (n.admin_decision === 'Pending' || !n.admin_decision || n.admin_decision === null)
+          );
+          setHasPendingDiscipline(pending);
+        }
+      } catch (err) {
+        console.error("Sidebar notice check error:", err);
+      }
+    };
+    checkDisciplineNotices();
+    const interval = setInterval(checkDisciplineNotices, 3000);
+    return () => clearInterval(interval);
+  }, [user, location.pathname]);
 
   const getMenuItems = () => {
     if (user?.role === 'admin') {
@@ -15,7 +38,14 @@ export default function DashboardSidebar() {
         { icon: LayoutDashboard, label: 'Admin Dashboard', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', action: () => navigate('/admin?tab=dashboard') },
         { icon: Shield, label: 'Command Centre', color: 'text-primary', bg: 'bg-primary/10', action: () => navigate('/admin?tab=command-center') },
         { icon: Users, label: 'Engineer Details', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', action: () => navigate('/admin?tab=engineers') },
-        { icon: ShieldOff, label: 'Compliance & Discipline', color: 'text-destructive', bg: 'bg-destructive/10', action: () => navigate('/admin?tab=discipline') },
+        { 
+          icon: ShieldOff, 
+          label: 'Compliance & Discipline', 
+          color: hasPendingDiscipline ? 'text-white' : 'text-destructive', 
+          bg: hasPendingDiscipline ? 'bg-red-700' : 'bg-destructive/10', 
+          action: () => navigate('/admin?tab=discipline'),
+          isUrgent: hasPendingDiscipline 
+        },
         { icon: Calendar, label: 'Leave Requests', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30', action: () => navigate('/admin?tab=leave-requests') },
         { icon: Activity, label: 'Flood Risk Predictor', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', action: () => navigate('/admin?tab=flood-risk') },
         { icon: Map, label: 'Live City Heatmap', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', action: () => navigate('/admin?tab=heatmap') },
@@ -51,18 +81,30 @@ export default function DashboardSidebar() {
             {menuItems.map((item, index) => {
               const isActive = (item.action.toString().includes('tab=') && location.search.includes(item.action.toString().split('?')[1])) ||
                                (!item.action.toString().includes('tab=') && location.pathname === item.action.toString());
+              const isUrgent = (item as any).isUrgent;
               
               return (
                 <Button
                   key={index}
                   variant="ghost"
-                  className={`w-full justify-start text-foreground/90 hover:text-foreground hover:bg-secondary/60 transition-all h-14 shadow-sm border border-transparent rounded-xl ${isActive ? 'bg-secondary/80 border-border/40' : ''}`}
+                  className={`w-full justify-start transition-all h-14 shadow-sm rounded-xl relative overflow-hidden ${
+                    isUrgent 
+                      ? 'bg-red-600 hover:bg-red-700 text-white font-black border-2 border-red-400 animate-pulse shadow-lg shadow-red-600/50' 
+                      : isActive 
+                        ? 'bg-secondary/80 border-border/40 text-foreground' 
+                        : 'text-foreground/90 hover:text-foreground hover:bg-secondary/60 border-transparent'
+                  }`}
                   onClick={item.action}
                 >
                   <div className={`mr-2.5 shadow-sm rounded-lg p-2 ${item.bg}`}>
                     <item.icon className={`h-5 w-5 ${item.color}`} />
                   </div>
-                  <span className="font-bold text-[15px]">{item.label}</span>
+                  <span className="font-bold text-[14px] flex-1 text-left truncate">{item.label}</span>
+                  {isUrgent && (
+                    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-black uppercase bg-white text-red-600 rounded-md tracking-tighter shrink-0 animate-bounce">
+                      ACTION REQUIRED
+                    </span>
+                  )}
                 </Button>
               );
             })}

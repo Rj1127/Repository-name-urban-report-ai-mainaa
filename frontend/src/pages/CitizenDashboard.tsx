@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/Navbar';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import ImageAnalyzer from '@/components/ImageAnalyzer';
+import SafeImage from '@/components/SafeImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import heroImage from '@/assets/hero-city.jpg';
@@ -329,11 +330,9 @@ export default function CitizenDashboard() {
                         <motion.div key={c.id || c._id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
                           <Card className="glass-panel overflow-hidden border-border/40 shadow-card hover:border-primary/30 transition-shadow">
                             <div className="p-5 flex gap-5">
-                              {c.before_image && (
-                                <div className="h-24 w-24 shrink-0 rounded-xl overflow-hidden border border-border/50">
-                                  <img src={c.before_image} alt="Issue" className="h-full w-full object-cover" />
-                                </div>
-                              )}
+                              <div className="h-24 w-24 shrink-0 rounded-xl overflow-hidden border border-border/50">
+                                <SafeImage src={c.before_image} alt="Issue" className="h-full w-full object-cover" />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start">
                                   <h3 className="font-bold text-foreground uppercase truncate">{c.issue_type.replace('_', ' ')}</h3>
@@ -535,8 +534,12 @@ export default function CitizenDashboard() {
                               alt="Before" 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                               onError={(e) => {
-                                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000&auto=format&fit=crop';
-                                 console.warn("Broken Before Image detected, using fallback.");
+                                 // Hide broken image tag and show fallback
+                                 (e.target as HTMLImageElement).style.display = 'none';
+                                 const parent = (e.target as HTMLImageElement).parentElement;
+                                 if (parent) {
+                                    parent.innerHTML = `<div class="text-center p-6 grayscale opacity-40"><svg class="h-10 w-10 mx-auto mb-2 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg><p class="text-[10px] font-black uppercase">Report Image Preview</p></div>`;
+                                 }
                               }}
                            />
                         ) : (

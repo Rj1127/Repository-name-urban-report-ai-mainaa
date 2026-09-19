@@ -12,14 +12,23 @@ router.post("/register", async (req, res) => {
     try {
         const {
             name, email, password, role,
-            phone, gov_id_type, gov_id_number, area, district, state, pincode,
+            phone, mobile,
+            gov_id_type, id_type,
+            gov_id_number, id_number,
+            area, block, district, state, pincode,
             dept_name, head_of_dept, experience_level,
             position, area_expertise, otp
         } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required fields." });
+        }
+
         // Check if user already exists
         const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: "User already exists with this email" });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists with this email address." });
+        }
 
         /* TEMPORARILY BYPASSED OTP
         if (!otp) {
@@ -40,13 +49,16 @@ router.post("/register", async (req, res) => {
         if (otpRecord.otp !== otp) return res.status(401).json({ message: "Invalid OTP code." });
         */
 
-        // OTP Valid! Create the user.
+        // Create the user
         const user = await User.create({
-            name, email, password, role,
-            phone: phone || null,
-            gov_id_type: gov_id_type || null,
-            gov_id_number: gov_id_number || null,
-            area: area || null,
+            name: name || email.split("@")[0],
+            email,
+            password,
+            role: role || "Citizen",
+            phone: phone || mobile || null,
+            gov_id_type: gov_id_type || id_type || null,
+            gov_id_number: gov_id_number || id_number || null,
+            area: area || block || null,
             district: district || null,
             state: state || null,
             pincode: pincode || null,
@@ -57,38 +69,48 @@ router.post("/register", async (req, res) => {
             area_expertise: area_expertise || null
         });
 
-        // Delete the consumed OTP
-        await OTP.deleteOne({ email });
+        // Delete consumed OTP safely if exists
+        try {
+            await OTP.deleteOne({ email });
+        } catch (otpErr) {
+            console.warn("OTP cleanup warning:", otpErr.message);
+        }
 
-        res.json({ message: "User registered successfully", id: user._id });
+        return res.status(201).json({ message: "User registered successfully", id: user._id, user });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Registration Error:", err);
+        return res.status(500).json({ message: err.message || "Internal server error during registration" });
     }
 });
 
 // LOGIN
 router.post("/login", async (req, res) => {
     try {
-        const { email, password, otp } = req.body;
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required." });
+        }
 
         const user = await User.findOne({ email, password });
         if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
         // --- Disciplinary Gate: Block login if account is disabled due to suspension ---
         if (user.login_disabled) {
-            const untilDate = user.suspension_until 
+            const untilDate = user.suspension_until
                 ? new Date(user.suspension_until).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
                 : 'further notice';
-            return res.status(403).json({ 
+            return res.status(403).json({
                 message: `⛔ Account Suspended. Your account has been disabled due to disciplinary action. You cannot log in until ${untilDate}. Contact your administrator with your reference suspension order.`,
                 is_suspended: true,
                 suspension_letter: user.suspension_letter
             });
         }
 
-        res.json(user);
+        return res.json(user);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Login Error:", err);
+        return res.status(500).json({ message: err.message || "Internal server error during login" });
     }
 });
 
@@ -117,9 +139,10 @@ router.put("/profile", async (req, res) => {
 
         await user.save();
 
-        res.json({ message: "Profile updated successfully", user });
+        return res.json({ message: "Profile updated successfully", user });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Profile Update Error:", err);
+        return res.status(500).json({ message: err.message || "Internal server error during profile update" });
     }
 });
 

@@ -122,11 +122,11 @@ export default function HeatmapModule() {
   );
 
   return (
-    <div className="flex flex-col gap-6 h-[calc(100vh-140px)] animate-in fade-in duration-700">
+    <div className="flex flex-col gap-6 min-h-[calc(100vh-140px)] animate-in fade-in duration-700 pb-8">
       {/* 🔹 TOP CONTROL BAR */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-secondary/20 p-4 rounded-3xl border border-border/40 backdrop-blur-md">
-        <div className="flex flex-wrap gap-2">
-           <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest w-full mb-1 opacity-50">Intelligence Layers</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-secondary/20 p-5 rounded-3xl border border-border/40 backdrop-blur-md shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+           <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest w-full mb-1 opacity-60">Intelligence Layers</p>
             {[
               { id: 'complaints', label: 'Complaints', color: 'bg-primary' },
               { id: 'flood', label: 'Flood Risk', color: 'bg-red-500' },
@@ -136,17 +136,17 @@ export default function HeatmapModule() {
               <Badge 
                 key={layer.id}
                 onClick={() => toggleLayer(layer.id)}
-                className={`cursor-pointer px-4 py-2 border-2 transition-all font-black text-[10px] tracking-widest ${activeLayers.includes(layer.id) ? `${layer.color} border-transparent text-white shadow-lg shadow-${layer.id}/20` : 'bg-background/50 border-border/40 text-muted-foreground hover:border-muted'}`}
+                className={`cursor-pointer px-4 py-2 border-2 transition-all font-black text-[10px] tracking-widest ${activeLayers.includes(layer.id) ? `${layer.color} border-transparent text-white shadow-md` : 'bg-background/50 border-border/40 text-muted-foreground hover:border-muted'}`}
               >
-                {activeLayers.includes(layer.id) ? <Zap className="h-3 w-3 mr-2 animate-pulse" /> : <Layers className="h-3 w-3 mr-2" />}
+                {activeLayers.includes(layer.id) ? <Zap className="h-3 w-3 mr-1.5 animate-pulse" /> : <Layers className="h-3 w-3 mr-1.5" />}
                 {layer.label.toUpperCase()}
               </Badge>
             ))}
         </div>
 
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-4 items-center w-full lg:w-auto justify-between lg:justify-end">
             <div className="flex flex-col gap-1">
-               <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-50">Time Horizon</p>
+               <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Time Horizon</p>
                <div className="flex gap-1 bg-background/40 p-1 rounded-xl border border-border/20">
                   {['LIVE', '24H', '7D', '30D'].map(t => (
                     <Button 
@@ -160,7 +160,7 @@ export default function HeatmapModule() {
             </div>
 
             <div className="flex flex-col gap-1">
-               <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-50">Risk Threshold</p>
+               <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Risk Threshold</p>
                <select 
                   value={riskFilter} 
                   onChange={(e) => setRiskFilter(e.target.value)}
@@ -177,35 +177,35 @@ export default function HeatmapModule() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+      <div className="flex flex-col lg:flex-row gap-6 min-h-[600px]">
         {/* 📊 LEFT PANEL */}
-        <div className="w-full lg:w-[340px] flex flex-col gap-6 overflow-hidden">
+        <div className="w-full lg:w-[360px] flex flex-col gap-5 shrink-0">
           {/* 1. Smart Stats Cards */}
           <div className="grid grid-cols-2 gap-3">
              {[
                { label: 'Total Reports', value: data?.points?.length || 0, color: 'text-primary' },
                { label: 'High Risk Zones', value: (data?.zones || []).filter(z => z.floodRisk > 70).length, color: 'text-red-500' },
                { label: 'Active Alerts', value: data?.alerts?.length || 0, color: 'text-orange-500' },
-               { label: 'Engineers deployed', value: 14, color: 'text-emerald-500' }
+               { label: 'Engineers Deployed', value: 14, color: 'text-emerald-500' }
              ].map((stat, i) => (
                 <Card key={i} className="glass-panel border-border/40 p-4 bg-secondary/5 group hover:bg-secondary/10 transition-all">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1 opacity-60 leading-none">{stat.label}</p>
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5 opacity-60 leading-tight">{stat.label}</p>
                     <div className={`text-2xl font-black ${stat.color}`}>{stat.value}</div>
                 </Card>
              ))}
           </div>
 
           {/* 2. Live Alerts Feed */}
-          <Card className="glass-panel border-border/40 flex-[1.5] flex flex-col min-h-0 bg-secondary/10 overflow-hidden relative border-l-4 border-l-destructive">
-             <div className="p-4 border-b border-border/40 flex items-center justify-between bg-destructive/5">
+          <Card className="glass-panel border-border/40 flex flex-col bg-secondary/10 overflow-hidden relative border-l-4 border-l-destructive max-h-[260px]">
+             <div className="p-3.5 border-b border-border/40 flex items-center justify-between bg-destructive/5">
                 <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-destructive">
-                   <Activity className="h-4 w-4 animate-pulse" /> Live intelligence feed
+                   <Activity className="h-4 w-4 animate-pulse" /> Live Intelligence Feed
                 </h3>
                 <div className="h-2 w-2 rounded-full bg-destructive animate-ping" />
              </div>
-             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+             <div className="overflow-y-auto p-3.5 space-y-2.5 custom-scrollbar max-h-[200px]">
                 {(data?.alerts || []).length === 0 ? (
-                   <div className="text-center py-10 opacity-30 italic text-[10px]">Strategic silence: No active threats.</div>
+                   <div className="text-center py-6 opacity-40 italic text-[11px]">Strategic silence: No active threats.</div>
                 ) : (data?.alerts || []).map((alert) => (
                    <div key={alert.id} className="p-3 bg-background/40 border border-border/40 rounded-xl relative overflow-hidden group hover:bg-background/60 transition-all cursor-help border-l-4 border-l-destructive/50">
                       <div className="flex justify-between items-center mb-1">
@@ -218,31 +218,28 @@ export default function HeatmapModule() {
              </div>
           </Card>
 
-          {/* 3. AI Insights (VERY IMPORTANT) */}
-          <Card className="glass-panel border-border/40 flex-1 p-5 bg-primary/5 relative overflow-hidden border-t-4 border-t-primary shadow-glow-sm">
-             <div className="absolute -right-4 -top-4 opacity-5"><Shield className="h-24 w-24 text-primary" /></div>
-             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
-                <Info className="h-4 w-4" /> AI predictive insights
+          {/* 3. AI Insights */}
+          <Card className="glass-panel border-border/40 p-5 bg-primary/5 relative overflow-hidden border-t-4 border-t-primary shadow-glow-sm">
+             <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none"><Shield className="h-24 w-24 text-primary" /></div>
+             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 flex items-center gap-2">
+                <Info className="h-4 w-4" /> AI Predictive Insights
              </h3>
-             <div className="space-y-4">
+             <div className="space-y-3">
                 {(data?.zones || []).filter(z => z.floodRisk > 70).slice(0, 2).map((z, i) => (
-                   <div key={i} className="space-y-1.5 border-l-2 border-primary/20 pl-3">
+                   <div key={i} className="space-y-1 border-l-2 border-primary/30 pl-3">
                       <p className="text-[11px] font-black text-foreground/90 leading-tight">🔍 Ward {String(z.id).replace('z','')}: {z.insight}</p>
-                      <p className="text-[10px] font-bold text-muted-foreground italic">"Deploy strategy: {z.recommendation.split('.')[0]}"</p>
+                      <p className="text-[10px] font-bold text-muted-foreground italic">"Deploy: {z.recommendation.split('.')[0]}"</p>
                    </div>
                 ))}
                 {(data?.zones || []).filter(z => z.floodRisk > 70).length === 0 && (
-                   <p className="text-[10px] font-bold text-muted-foreground italic text-center py-4">Scanning city topology for anomalies...</p>
+                   <p className="text-[10px] font-bold text-muted-foreground italic text-center py-2">Scanning city topology for anomalies...</p>
                 )}
              </div>
-             <Button variant="link" className="text-[9px] font-black uppercase tracking-widest text-primary p-0 h-auto mt-4 hover:no-underline flex items-center gap-1 group">
-                Full Strategic Report <ExternalLink className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-             </Button>
           </Card>
         </div>
 
         {/* 🗺️ MAP AREA (MAPBOX) */}
-        <div className="flex-1 relative min-h-[400px]">
+        <div className="flex-1 relative min-h-[500px] lg:min-h-[600px] rounded-3xl overflow-hidden border border-border/40 shadow-2xl">
            <HeatmapMap 
                 data={data || { points: [], zones: [] }} 
                 activeLayers={activeLayers}
@@ -253,14 +250,14 @@ export default function HeatmapModule() {
            />
 
            {/* MAP INFO OVERLAY */}
-           <div className="absolute top-6 left-6 pointer-events-none">
-              <div className="bg-background/80 backdrop-blur-xl p-4 rounded-2xl border border-border/40 shadow-2xl flex items-center gap-4">
+           <div className="absolute top-6 left-6 pointer-events-none z-10">
+              <div className="bg-background/90 backdrop-blur-xl p-4 rounded-2xl border border-border/40 shadow-2xl flex items-center gap-4">
                  <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
                     <MapIcon className="h-5 w-5 text-primary" />
                  </div>
                  <div>
                     <p className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">System status</p>
-                    <p className="text-sm font-black text-emerald-500 uppercase flex items-center gap-2">
+                    <p className="text-xs font-black text-emerald-500 uppercase flex items-center gap-2">
                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Strategic link active
                     </p>
                  </div>
@@ -327,13 +324,9 @@ export default function HeatmapModule() {
                       </div>
 
                       <div className="flex flex-col gap-3">
-                         <Button onClick={() => handleDispatch(selectedZone)} className="w-full h-16 gradient-primary text-white font-black uppercase tracking-widest text-xs shadow-glow-sm hover:translate-y-[-2px] active:translate-y-0 transition-all">
+                         <Button onClick={() => handleDispatch(selectedZone)} className="w-full h-14 gradient-primary text-white font-black uppercase tracking-widest text-xs shadow-glow-sm hover:translate-y-[-2px] active:translate-y-0 transition-all">
                             <Shield className="mr-3 h-5 w-5" /> Deploy strategic response
                          </Button>
-                         <div className="flex gap-2">
-                             <Button variant="outline" className="flex-1 h-12 font-black border-border/40 text-[9px] uppercase tracking-wider rounded-xl">View Node Logs</Button>
-                             <Button variant="outline" className="flex-1 h-12 font-black border-border/40 text-[9px] uppercase tracking-wider rounded-xl">Satellite Feed</Button>
-                         </div>
                       </div>
                    </div>
                 </Card>
@@ -341,9 +334,9 @@ export default function HeatmapModule() {
            )}
 
            {/* LEGEND OVERLAY (FLOATING ON MAP) */}
-           <div className="absolute bottom-6 left-6 bg-background/60 backdrop-blur-md p-4 rounded-2xl border border-border/20 hidden md:block">
-              <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-3 tracking-widest opacity-60">Risk scale legend</h4>
-              <div className="flex flex-col gap-2.5">
+           <div className="absolute bottom-6 left-6 bg-background/80 backdrop-blur-md p-4 rounded-2xl border border-border/30 hidden md:block z-10">
+              <h4 className="text-[10px] font-black uppercase text-muted-foreground mb-3 tracking-widest opacity-70">Risk scale legend</h4>
+              <div className="flex flex-col gap-2">
                  {[
                     { c: 'bg-red-600', l: 'Critical', r: '90%' },
                     { c: 'bg-orange-500', l: 'High', r: '70%' },
@@ -353,7 +346,7 @@ export default function HeatmapModule() {
                     <div key={i} className="flex items-center gap-3">
                        <div className={`h-2.5 w-2.5 rounded-full ${leg.c} shadow-sm shadow-black/20`} />
                        <span className="text-[10px] font-black uppercase tracking-tighter w-16 opacity-80">{leg.l}</span>
-                       <span className="text-[10px] font-black opacity-30 text-mono">{leg.r}</span>
+                       <span className="text-[10px] font-black opacity-40 text-mono">{leg.r}</span>
                     </div>
                  ))}
               </div>
@@ -362,8 +355,8 @@ export default function HeatmapModule() {
       </div>
       
       {/* FINAL WINNING LINE */}
-      <div className="text-center opacity-30 hover:opacity-100 transition-opacity">
-         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">“This is not just a map — it’s a real-time urban intelligence system that predicts risks, alerts authorities, and takes action before disasters happen.”</p>
+      <div className="text-center p-4 bg-secondary/10 rounded-2xl border border-border/30 backdrop-blur-sm mt-2">
+         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary leading-relaxed">“This is not just a map — it’s a real-time urban intelligence system that predicts risks, alerts authorities, and takes action before disasters happen.”</p>
       </div>
     </div>
   );
